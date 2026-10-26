@@ -803,6 +803,12 @@ def principal():
     _paso('apagar el Wi-Fi (down + autoconnect no + radio off)', desconectar_wifi)
     _paso('encender el punto de acceso Wi-Fi', encender_ap)
     _paso('fase producción', poner_fase, 'produccion')
+    # El bloqueador DNS no hace nada en preparación: en cuanto la fase es
+    # producción se lanza la primera descarga de listas (en segundo plano,
+    # sin esperar), para que el bloqueo funcione desde el primer minuto y no
+    # cuando toque el temporizador.
+    _paso('primera descarga de las listas de bloqueo',
+          lambda: run(['systemctl', '--no-block', 'start', 'router-bloqueo.service'], timeout=15))
     _paso('ARP gratuito en %s' % LAN_IF, arp_gratuito)
     log('Router ACTIVO. Vigilando %d min: confirma con «router-migrar --confirmar».' % (VIGILANCIA_S // 60),
         fase='vigilando')

@@ -760,10 +760,6 @@ nsay "habilitando y arrancando los servicios del router…"
 systemctl enable --now routerd.service router-panel.service router-estadisticas.service \
     router-bloqueo.timer router-logrotate-dns.timer \
     router-firewall-arranque.service router-migracion-arranque.service
-# Primera descarga de las listas de bloqueo YA, en segundo plano: el timer
-# sólo la lanza 5 min después del arranque, y una instalación recién hecha
-# quedaría sin filtrar hasta entonces.
-systemctl --no-block start router-bloqueo.service || avisar "no se pudo lanzar la primera descarga de las listas de bloqueo"
 # router-adb (tethering USB de teléfonos) sólo si el binario está:
 if command -v adb >/dev/null 2>&1; then
     systemctl enable --now router-adb.service
