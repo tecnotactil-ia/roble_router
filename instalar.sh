@@ -201,18 +201,20 @@ preguntar() {   # preguntar <NOMBRE_VAR> <texto> <defecto> → imprime el valor
 }
 
 contrasena_interactiva() {   # imprime la contraseña (≥12 chars, dos veces, sin eco)
+    # Todo lo que no es la contraseña va a stderr: la función se usa como
+    # CLAVE=$(contrasena_interactiva) y cualquier eco a stdout se colaría en ella.
     local clave1 clave2
     while :; do
         read -r -s -p "Contraseña del admin del panel (mínimo 12 caracteres): " clave1
-        echo
+        echo >&2
         read -r -s -p "Repite la contraseña: " clave2
-        echo
+        echo >&2
         if [ ${#clave1} -lt 12 ]; then
-            echo "demasiado corta (mínimo 12 caracteres): otra vez."
+            echo >&2 "demasiado corta (mínimo 12 caracteres): otra vez."
             continue
         fi
         if [ "$clave1" != "$clave2" ]; then
-            echo "no coinciden: otra vez."
+            echo >&2 "no coinciden: otra vez."
             continue
         fi
         printf '%s' "$clave1"
@@ -224,15 +226,15 @@ contrasena_ap_interactiva() {   # imprime la clave WPA2 del AP (mínimo 8, dos v
     local clave1 clave2
     while :; do
         read -r -s -p "Clave WPA2 del punto de acceso (mínimo 8 caracteres): " clave1
-        echo
+        echo >&2
         read -r -s -p "Repite la clave: " clave2
-        echo
+        echo >&2
         if [ ${#clave1} -lt 8 ]; then
-            echo "demasiado corta (mínimo 8 caracteres): otra vez."
+            echo >&2 "demasiado corta (mínimo 8 caracteres): otra vez."
             continue
         fi
         if [ "$clave1" != "$clave2" ]; then
-            echo "no coinciden: otra vez."
+            echo >&2 "no coinciden: otra vez."
             continue
         fi
         printf '%s' "$clave1"
@@ -697,7 +699,7 @@ printf '%s\n%s\n' "$CLAVE" "$CLAVE" |
         PANEL_SECRET_FILE=/var/lib/router-panel/secret_key \
         PANEL_AUDIT=/var/log/router-panel/audit.log \
         bash -c "cd /opt/router-panel && exec /opt/router-panel/venv/bin/flask --app wsgi crear-usuario '$ADMIN' --rol admin" \
-    || { unset CLAVE; morir "no se pudo crear el usuario admin (¿ya existe? borra /var/lib/router-panel/usuarios.json o usa otro nombre)"; }
+    || { unset CLAVE; morir "no se pudo crear el usuario admin del panel (mira el mensaje de arriba)"; }
 fi
 unset CLAVE
 
