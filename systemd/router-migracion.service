@@ -1,0 +1,12 @@
+[Unit]
+Description=Router de casa: activación (espera a que la IP del router quede libre, activa y vigila con vuelta atrás)
+After=NetworkManager.service routerd.service
+# N2: Wants (no Requires) — si routerd no llega a arrancar, la migración
+# debe poder seguir esperando/vigilando y, sobre todo, deshacer() debe poder
+# correr igual (no depende de que routerd exista como unidad).
+Wants=routerd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/router/router_migrar.py
+# No se reinicia solo: es un proceso de una sola vez que se lanza a mano.

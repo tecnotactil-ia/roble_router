@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block titulo %}Firewall{% endblock %}
+{% block titulo_pagina %}Firewall{% endblock %}
+{% block contenido %}
+
+{% set es_admin = session.get('rol') == 'admin' %}
+
+<div class="alert tt-alerta-info">
+    <i class="bi bi-shield-lock" aria-hidden="true"></i>
+    <span>Reglas de firewall de la casa: la primera regla que coincide con un tráfico es la que se aplica
+    (como en Kerio). Las reglas nuevas sólo afectan a conexiones nuevas; para que un bloqueo valga ya,
+    el router corta también las conexiones abiertas del origen afectado.</span>
+</div>
+
+{% if fw.firewall_error %}
+<div class="alert tt-alerta-error" role="alert">
+    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+    <span>El firewall tiene un error pendiente: {{ fw.firewall_error }}</span>
+</div>
+{% endif %}
+
+{% if not fw_disponible %}
+<div class="alert tt-alerta-warning" role="alert">
+    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+    <span>El router todavía no ha enviado su configuración de firewall; recarga en unos segundos.
+    Los controles de esta página están desactivados hasta que esté disponible.</span>
+</div>
+{% endif %}
+
+<section class="tt-seccion">
+    <div class="tt-fw-cabecera">
+        <h2 class="tt-subtitulo">Reglas</h2>
+        {% if es_admin %}
+        <div class="tt-fw-cabecera-acciones">
+            <a class="btn tt-btn-primario" href="{{ url_for('firewall.regla_nueva') }}">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Nueva regla
+            </a>
+            <a class="btn tt-btn-outline-primario" href="{{ url_for('firewall.grupos') }}">
+                <i class="bi bi-collection" aria-hidden="true"></i> Grupos
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if es_admin %}
+    <div class="tt-fw-ejemplos" role="group" aria-label="Plantillas de ejemplo">
+        {% for clave, ejemplo in ejemplos.items() %}
+        <a class="tt-fw-ejemplo" href="{{ url_for('firewall.regla_nueva', ejemplo=clave) }}">
+            <i class="bi bi-magic" aria-hidden="true"></i>
+            <span>
+                <strong>{{ ejemplo.titulo }}</strong>
+                <small>{{ ejemplo.descripcion }}</small>
+            </span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not filas %}
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <p class="tt-sin-datos">
+                <i class="bi bi-shield-check" aria-hidden="true"></i>
+                No hay reglas todavía. Todas las conexiones de la casa hacia Internet se permiten
+                de forma predeterminada; añade una regla para empezar a filtrar.
+            </p>
+        </div>
+    </div>
+    {% else %}
+    <div class="tt-tabla-wrap">
+        <table class="table tt-tabla tt-tabla-responsive">
+            <thead>
+                <tr>
+                    <th scope="col">Nº</th>
+                    <th scope="col">Activa</th>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">Origen</th>
+                    <th scope="col">Destino</th>
+                    <th scope="col">Servicio</th>
+                    <th scope="col">Acción</th>
+                    <th scope="col">Registrar</th>
+                    <th scope="col">Hits</th>
+                    <th scope="col">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in filas %}
+                <tr class="{{ 'tt-fw-regla-inactiva' if not fila.habilitada }}">
+                    <td data-label="Nº">{{ fila.numero }}</td>
+                    <td data-label="Activa">
+                        {% if es_admin %}
+                        <form method="post" action="{{ url_for('firewall.regla_activar') }}" class="tt-fw-interruptor-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="version" value="{{ fw.version }}">
+                            <input type="hidden" name="regla_id" value="{{ fila.id }}">
+                            <input type="hidden" name="habilitada" value="{{ '0' if fila.habilitada else '1' }}">
+                            <button type="submit" class="tt-fw-interruptor {{ 'tt-fw-interruptor-on' if fila.habilitada else 'tt-fw-interruptor-off' }}"
+                                    title="{{ 'Desactivar' if fila.habilitada else 'Activar' }} la regla «{{ fila.nombre }}»">
+                                <span class="tt-fw-interruptor-pastilla" aria-hidden="true"></span>
+                                <span class="visually-hidden">{{ 'Desactivar' if fila.habilitada else 'Activar' }}</span>
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="tt-fw-interruptor tt-fw-interruptor-lectura {{ 'tt-fw-interruptor-on' if fila.habilitada else 'tt-fw-interruptor-off' }}"
+                              aria-label="{{ 'Activa' if fila.habilitada else 'Inactiva' }}">
+                            <span class="tt-fw-interruptor-pastilla" aria-hidden="true"></span>
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Nombre">
+                        <span class="tt-fw-nombre">{{ fila.nombre }}</span>
+                        {% if fila.comentario %}
+                        <small class="tt-fw-comentario">{{ fila.comentario }}</small>
+                        {% endif %}
+                    </td>
+                    <td data-label="Origen">{{ fila.origen }}</td>
+                    <td data-label="Destino">{{ fila.destino }}</td>
+                    <td data-label="Servicio"><code class="tt-fw-servicio">{{ fila.servicio }}</code></td>
+                    <td data-label="Acción">
+                        <span class="tt-fw-accion tt-fw-accion-{{ fila.accion }}">{{ fila.accion|capitalize }}</span>
+                    </td>
+                    <td data-label="Registrar">
+                        {% if fila.registrar %}
+                        <i class="bi bi-journal-text tt-fw-si" aria-label="Sí"></i>
+                        {% else %}
+                        <span class="tt-fw-no" aria-label="No">—</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Hits">
+                        {% if fila.aciertos is not none %}
+                        <span class="tt-fw-hits">{{ fila.aciertos|miles }}</span>
+                        {% else %}
+                        <span class="tt-fw-no">—</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Acciones" class="tt-acciones">
+                        {% if es_admin %}
+                        <div class="tt-fw-botones-fila">
+                            {% if not loop.first %}
+                            <form method="post" action="{{ url_for('firewall.regla_mover') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="version" value="{{ fw.version }}">
+                                <input type="hidden" name="regla_id" value="{{ fila.id }}">
+                                <input type="hidden" name="posicion" value="{{ fila.indice - 1 }}">
+                                <button type="submit" class="btn btn-sm tt-btn-icono" title="Subir la regla «{{ fila.nombre }}»">
+                                    <i class="bi bi-arrow-up" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Subir</span>
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% if not loop.last %}
+                            <form method="post" action="{{ url_for('firewall.regla_mover') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="version" value="{{ fw.version }}">
+                                <input type="hidden" name="regla_id" value="{{ fila.id }}">
+                                <input type="hidden" name="posicion" value="{{ fila.indice + 1 }}">
+                                <button type="submit" class="btn btn-sm tt-btn-icono" title="Bajar la regla «{{ fila.nombre }}»">
+                                    <i class="bi bi-arrow-down" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Bajar</span>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <a class="btn btn-sm tt-btn-icono" href="{{ url_for('firewall.regla_editar', regla_id=fila.id) }}"
+                               title="Editar la regla «{{ fila.nombre }}»">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                                <span class="visually-hidden">Editar</span>
+                            </a>
+                            <form method="post" action="{{ url_for('firewall.regla_eliminar') }}"
+                                  class="tt-fw-form-borrar">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="version" value="{{ fw.version }}">
+                                <input type="hidden" name="regla_id" value="{{ fila.id }}">
+                                <button type="submit" class="btn btn-sm tt-btn-icono tt-btn-icono-peligro"
+                                        title="Borrar la regla «{{ fila.nombre }}»">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Borrar</span>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Configuración activa de nftables</h2>
+    {% if error %}
+    <div class="alert tt-alerta-error" role="alert">
+        <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+        <span>{{ error }}</span>
+    </div>
+    {% else %}
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <p class="tt-resumen-firewall">{{ n_lineas }} líneas en la configuración actual de nftables.</p>
+            <pre class="tt-firewall-pre">{% for l in lineas %}<span class="{{ l.clase }}">{{ l.texto }}</span>
+{% endfor %}</pre>
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+{% endblock %}

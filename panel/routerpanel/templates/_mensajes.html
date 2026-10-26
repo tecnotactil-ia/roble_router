@@ -1,0 +1,39 @@
+{% with mensajes = get_flashed_messages(with_categories=true) %}
+  {% if mensajes %}
+    {#
+      Wrapper fijo único con DOS regiones vivas, vacías en el HTML servido:
+        - #tt-toast-urgente (aria-live="assertive"): warning/error.
+        - #tt-toast-contenedor (aria-live="polite"): ok/info y cualquier
+          categoría desconocida.
+      Los avisos que avisos.js reparte ahí dentro NO llevan su propio
+      role/aria-live: la región ya lo aporta el contenedor, y ponerlo
+      también en cada aviso duplicaría el anuncio. Ambas regiones llegan
+      vacías del servidor para que el lector de pantalla las registre como
+      vivas desde la carga; el reparto por categoría y la inserción
+      ocurren después, por JS (ver avisos.js).
+    #}
+    <div class="tt-toast-wrapper" id="tt-toast-wrapper" data-tt-toast-wrapper>
+      <div id="tt-toast-urgente" data-tt-toasts-urgente aria-live="assertive"></div>
+      <div id="tt-toast-contenedor" data-tt-toasts aria-live="polite"></div>
+    </div>
+    {#
+      #tt-toast-origen: esto es lo que se ve sin JS. No es "fixed" (va en
+      el flujo normal del documento, justo antes de <main>, ver
+      base.html), así que no tapa nada. Con JS, avisos.js mueve (no clona,
+      no usa innerHTML) cada nodo de aquí a la región viva que le
+      corresponda por categoría, y este contenedor se queda vacío.
+    #}
+    <div class="tt-toast-origen" id="tt-toast-origen" data-tt-toasts-origen>
+      {% for categoria, mensaje in mensajes %}
+        {% set icono = {'ok': 'bi-check-circle', 'error': 'bi-exclamation-circle', 'warning': 'bi-exclamation-triangle', 'info': 'bi-info-circle'}.get(categoria, 'bi-info-circle') %}
+        <div class="tt-toast tt-alerta-{{ categoria }}" data-tt-toast data-tt-categoria="{{ categoria }}">
+          <i class="bi {{ icono }} tt-toast-icono" aria-hidden="true"></i>
+          <span class="tt-toast-texto">{{ mensaje }}</span>
+          <button type="button" class="tt-toast-cerrar" data-tt-toast-cerrar aria-label="Cerrar">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}Mi cuenta{% endblock %}
+{% block titulo_pagina %}Mi cuenta{% endblock %}
+{% block contenido %}
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Cambiar contraseña</h2>
+    <div class="tt-tarjetas-form">
+        <div class="card tt-tarjeta-form">
+            <div class="card-body">
+                {% if form.errors %}
+                <div class="alert tt-alerta-error" role="alert">
+                    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                    <ul class="mb-0">
+                        {% for campo, errores in form.errors.items() %}
+                            {% for error in errores %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <form method="post" action="{{ url_for('cuenta.index') }}">
+                    {{ form.hidden_tag() }}
+                    <div class="tt-campos">
+                        <div class="tt-campo tt-campo-ancho">
+                            <label class="form-label" for="password_actual">Contraseña actual</label>
+                            {{ form.password_actual(class_="form-control", id="password_actual", autocomplete="current-password") }}
+                        </div>
+                        <div class="tt-campo">
+                            <label class="form-label" for="password_nueva">Contraseña nueva (mínimo 12 caracteres)</label>
+                            {{ form.password_nueva(class_="form-control", id="password_nueva", autocomplete="new-password") }}
+                        </div>
+                        <div class="tt-campo">
+                            <label class="form-label" for="password_repetir">Repite la contraseña nueva</label>
+                            {{ form.password_repetir(class_="form-control", id="password_repetir", autocomplete="new-password") }}
+                        </div>
+                    </div>
+                    <button class="btn tt-btn-primario" type="submit"><i class="bi bi-key" aria-hidden="true"></i> Cambiar contraseña</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

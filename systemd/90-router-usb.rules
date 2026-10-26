@@ -1,0 +1,4 @@
+# /etc/udev/rules.d/90-router-usb.rules
+# Los teléfonos por USB son las líneas WAN: sin autosuspensión USB, que
+# corta el tethering cuando el enlace está un rato tranquilo.
+ACTION=="add", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="on"

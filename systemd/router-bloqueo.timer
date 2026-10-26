@@ -1,0 +1,20 @@
+[Unit]
+Description=Router de casa: actualización periódica de las listas de bloqueo DNS
+
+[Timer]
+OnBootSec=5min
+# bloqueo.actualizar_h (router.json) decide cada cuánto se quiere en
+# realidad (6-168 h, defecto 24) — pero esta unidad estática no puede leer
+# router.json por sí misma, así que aquí se fija el defecto (24 h); si el
+# admin cambia actualizar_h desde el panel, la PRÓXIMA ejecución periódica
+# sigue siendo cada 24 h salvo que se reinstale este .timer con otro valor
+# (limitación conocida: no hay reconfiguración dinámica del propio timer
+# todavía — ver el informe de instalación). Lo que SÍ es inmediato en
+# cualquier momento es `bloqueo_actualizar` desde el panel (acción de
+# buzón → routerd → `systemctl --no-block start router-bloqueo.service`).
+OnUnitActiveSec=24h
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

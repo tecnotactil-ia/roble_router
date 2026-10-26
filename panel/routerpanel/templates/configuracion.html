@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block titulo %}Configuración{% endblock %}
+{% block titulo_pagina %}Configuración{% endblock %}
+{% block contenido %}
+
+<div class="tt-tarjetas-form">
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <h2 class="tt-card-titulo"><i class="bi bi-hdd-network" aria-hidden="true"></i> Rango DHCP y lease</h2>
+            <form method="post" action="{{ url_for('configuracion.dhcp') }}">
+                {{ form_dhcp.hidden_tag() }}
+                <div class="tt-campos">
+                    <div class="tt-campo">
+                        <label class="form-label" for="inicio">Inicio</label>
+                        {{ form_dhcp.inicio(class_="form-control", id="inicio", readonly=(session.get('rol') != 'admin')) }}
+                    </div>
+                    <div class="tt-campo">
+                        <label class="form-label" for="fin">Fin</label>
+                        {{ form_dhcp.fin(class_="form-control", id="fin", readonly=(session.get('rol') != 'admin')) }}
+                    </div>
+                    <div class="tt-campo tt-campo-ancho">
+                        <label class="form-label" for="lease">Lease (ej. 12h, 30m)</label>
+                        {{ form_dhcp.lease(class_="form-control", id="lease", readonly=(session.get('rol') != 'admin')) }}
+                    </div>
+                </div>
+                {% if session.get('rol') == 'admin' %}
+                <button class="btn tt-btn-primario" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <h2 class="tt-card-titulo"><i class="bi bi-hdd-rack" aria-hidden="true"></i> Servidores DNS</h2>
+            <form method="post" action="{{ url_for('configuracion.dns') }}">
+                {{ form_dns.hidden_tag() }}
+                <div class="tt-campos">
+                    <div class="tt-campo tt-campo-ancho">
+                        <label class="form-label" for="servidores">IPs separadas por coma (1-4)</label>
+                        {{ form_dns.servidores(class_="form-control", id="servidores", readonly=(session.get('rol') != 'admin')) }}
+                    </div>
+                </div>
+                {% if session.get('rol') == 'admin' %}
+                <button class="btn tt-btn-primario" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <h2 class="tt-card-titulo"><i class="bi bi-activity" aria-hidden="true"></i> Monitorización</h2>
+            <form method="post" action="{{ url_for('configuracion.monitor') }}">
+                {{ form_monitor.hidden_tag() }}
+                <div class="tt-campos">
+                    <div class="tt-campo tt-campo-ancho">
+                        <label class="form-label" for="destinos">Destinos separados por coma (1-4)</label>
+                        {{ form_monitor.destinos(class_="form-control", id="destinos", readonly=(session.get('rol') != 'admin')) }}
+                    </div>
+                    <div class="tt-campo">
+                        <label class="form-label" for="intervalo_s">Intervalo (3-60 s)</label>
+                        {{ form_monitor.intervalo_s(class_="form-control", id="intervalo_s", readonly=(session.get('rol') != 'admin')) }}
+                    </div>
+                    <div class="tt-campo">
+                        <label class="form-label" for="fallos_caida">Fallos para caída (1-10)</label>
+                        {{ form_monitor.fallos_caida(class_="form-control", id="fallos_caida", readonly=(session.get('rol') != 'admin')) }}
+                    </div>
+                    <div class="tt-campo">
+                        <label class="form-label" for="exitos_alta">Éxitos para alta (1-10)</label>
+                        {{ form_monitor.exitos_alta(class_="form-control", id="exitos_alta", readonly=(session.get('rol') != 'admin')) }}
+                    </div>
+                </div>
+                {% if session.get('rol') == 'admin' %}
+                <button class="btn tt-btn-primario" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

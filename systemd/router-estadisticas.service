@@ -1,0 +1,131 @@
+[Unit]
+Description=Router de casa: recolector de estadísticas para el panel (tráfico WAN/dispositivo, DNS)
+Documentation=file:///usr/local/share/doc/roble_router/README.md
+After=routerd.service
+Wants=routerd.service
+
+[Service]
+# Recolector de fondo: nunca debe competir con el enrutado ni con dnsmasq.
+Nice=10
+IOSchedulingClass=idle
+MemoryMax=200M
+# BAJA15 (revisión Opus): prioridad de CPU baja frente a routerd/dnsmasq
+# bajo contención (100 es el valor "normal" de cgroup v2; por debajo cede
+# CPU a cualquier otro servicio que la necesite antes).
+CPUWeight=30
+# ALTA1 (revisión Opus): /var/log/router/dns.log lo crea dnsmasq con sus
+# permisos (0640 dnsmasq:dnsmasq — routerd sólo lo REFERENCIA en la config
+# de dnsmasq, no cambia su propiedad). Sin esto, este servicio (root, pero
+# con el CapabilityBoundingSet de abajo, que NO incluye CAP_DAC_OVERRIDE/
+# CAP_DAC_READ_SEARCH) no puede abrirlo: ni "list map" ni nada arregla
+# esto, es sencillamente un permiso de lectura que falta — dns_hora se
+# quedaría vacía PARA SIEMPRE, en silencio (router_estadisticas.py avisa
+# UNA vez por el log si esto llega a pasar — ver
+# Estadisticas._procesar_dns/_aviso_dns_log_fallo — pero lo correcto es
+# que no pase). Entrar en el grupo "dnsmasq" (el propietario del fichero)
+# es más mínimo que darle CAP_DAC_READ_SEARCH (que le dejaría leer
+# CUALQUIER fichero del sistema, no sólo éste).
+# En Debian el usuario dnsmasq NO tiene grupo propio (su grupo es nogroup) y
+# dns.log queda dnsmasq:nogroup 0640: SupplementaryGroups=dnsmasq hacía fallar
+# el arranque (216/GROUP). Se usa CAP_DAC_READ_SEARCH (solo lectura) abajo.
+# Igual que router_adb.service (M7): Type=notify + WatchdogSec propios — este
+# servicio es un proceso APARTE a propósito, para que `nft -j list set`,
+# /proc/net/nf_conntrack o un pico del log de DNS nunca puedan arriesgar el
+# watchdog de routerd (nftables/rutas/DHCP).
+Type=notify
+User=root
+# BAJA (revisión Opus): defensa en profundidad para el directorio/fichero de
+# SQLite (0750/0640 root:routerpanel — ver router_estadisticas.abrir_db) y
+# los -wal/-shm que SQLite crea solo (ver _igualar_permisos_wal). Sin esto,
+# root suele arrancar con UMask 022: un fichero nuevo saldría 0644 (y un
+# directorio 0755) un instante ANTES de que el propio programa lo corrija
+# con chmod/chown — con 0027 ya nace 0640/0750, así que ese instante
+# nunca es más permisivo de la cuenta. El chmod/chown explícito del
+# programa sigue haciendo falta igual (el UMask no cambia el GRUPO).
+UMask=0027
+
+ExecStart=/usr/bin/python3 /usr/local/lib/router/router_estadisticas.py
+Restart=always
+RestartSec=5
+# El ciclo normal es de router_estadisticas.intervalo_s (router.json,
+# defecto y recomendado 60 s); se avisa al watchdog varias veces por ciclo
+# (tras leer estado.json, tras nft, tras el DNS, tras el rollup/retención, y
+# cada 15 s mientras espera al siguiente ciclo) — 180 s deja margen de sobra
+# incluso si un ciclo se alarga (log DNS grande, conntrack lento).
+WatchdogSec=180
+
+# /run/router (estado.json, que SÓLO lee) y /var/log/router (dns.log, que
+# SÓLO lee) ya los crea/mantiene routerd.service — aquí no hace falta
+# declarar RuntimeDirectory/LogsDirectory propios porque este servicio no
+# ESCRIBE en ninguno de los dos (systemd no concede el directorio de otro
+# servicio por sí solo, pero tampoco hace falta: basta con que exista, y
+# routerd.service ya garantiza eso con RuntimeDirectoryPreserve=yes).
+#
+# ALTA2 (revisión Opus, corrige una nota anterior de este mismo fichero):
+# "StateDirectory=router/estadisticas" SÍ es sintaxis válida (systemd
+# soporta subdirectorios en StateDirectory desde la 235) — no se usa por
+# otro motivo, uno real: StateDirectory crea el directorio con el User=/
+# Group= de ESTE unit (root:root, no hay Group= puesto), y StateDirectoryMode=
+# sólo controla el MODO, nunca el GRUPO — así que, aunque fuera válida,
+# igualmente haría falta el chown a routerpanel aparte. Se declara con
+# ReadWritePaths en su lugar, para que quede claro que el propietario/grupo
+# final (root:routerpanel, 0750) lo decide router_estadisticas.abrir_db, no
+# esta unit.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+# BAJA15 (revisión Opus): endurecimiento adicional — comprobado que
+# `nft -j list set` SIGUE funcionando con esto (necesita poder abrir un
+# socket AF_NETLINK; sd_notify necesita AF_UNIX; ningún otro código de
+# este programa abre sockets de ningún otro tipo, ni toca /dev, ni lee/
+# escribe sysctls o módulos del kernel).
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+PrivateDevices=yes
+# ALTA2 (revisión Opus): datos propios (SQLite) en
+# /var/lib/router/estadisticas. El "-" inicial es IMPRESCINDIBLE en una
+# instalación limpia: la primera vez que se instala este `.service` ese
+# directorio TODAVÍA no existe (lo crea `router_estadisticas.abrir_db` en
+# su primer arranque, o el tmpfiles.d de abajo) — sin el "-", systemd
+# fallaría al preparar el espacio de nombres de montaje con
+# "226/NAMESPACE" porque ProtectSystem=strict necesita poder enlazar esa
+# ruta y no puede si no existe. `systemd/router-tmpfiles.conf` (instalado
+# como /etc/tmpfiles.d/router.conf) ya la crea de antemano (0750
+# root:routerpanel) para no depender de este orden; el propio programa la
+# vuelve a corregir cada vez que abre la base, por si acaso.
+ReadWritePaths=-/var/lib/router/estadisticas
+# Lecturas: estado.json/firewall (routerd), el log de dnsmasq, las leases y
+# router.json. Todo de SÓLO LECTURA para este servicio (nunca escribe en
+# ninguno de ellos) — ProtectSystem=strict ya deja todo /etc, /var y /usr de
+# sólo lectura salvo lo listado en ReadWritePaths, así que ni falta declarar
+# estas rutas aparte; se listan aquí sólo como documentación de qué toca.
+#   /etc/router/router.json            (configuración)
+#   /run/router/estado.json            (routerd)
+#   /var/log/router/dns.log            (dnsmasq, vía routerd — ver
+#                                        SupplementaryGroups=dnsmasq arriba,
+#                                        ALTA1: sin eso este servicio no
+#                                        podría ABRIRLO para leerlo, aunque
+#                                        ProtectSystem=strict no sea el motivo)
+#   /var/lib/misc/dnsmasq.leases       (dnsmasq)
+
+# Capacidades mínimas (BAJA, endurecimiento): `nft -j list set ...` para leer
+# disp_sube/disp_baja y /proc/net/nf_conntrack requieren poder abrir un
+# socket netlink NETFILTER/NETLINK — eso es CAP_NET_ADMIN. CAP_CHOWN hace
+# falta porque este programa, al crear el directorio/fichero de SQLite por
+# primera vez, hace chown a root:routerpanel (ver
+# router_estadisticas.abrir_db) — SIN esa capacidad en el bounding set,
+# CapabilityBoundingSet restringido se lo impediría incluso siendo root (la
+# llamada quedaría silenciada por el propio programa, pero el fichero se
+# quedaría root:root y el panel no podría leerlo). No hace falta ninguna
+# otra (no toca rutas, no hace raw sockets, no cambia sysctls: sólo LEE
+# /proc/sys/net/netfilter/nf_conntrack_count, que no necesita capacidad
+# alguna). Con User=root de arriba ya las tiene todas disponibles;
+# CapabilityBoundingSet es lo que de verdad las restringe a sólo estas dos
+# aunque la cuenta sea root. Comprobado que basta con CAP_NET_ADMIN para
+# `nft list`/`nft -j list`: no hace falta CAP_NET_RAW ni CAP_SYS_ADMIN.
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_CHOWN CAP_DAC_READ_SEARCH
+
+[Install]
+WantedBy=multi-user.target

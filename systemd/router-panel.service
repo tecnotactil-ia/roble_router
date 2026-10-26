@@ -1,0 +1,29 @@
+[Unit]
+Description=Router de casa: panel web (gunicorn, sin privilegios)
+After=network.target routerd.service
+
+[Service]
+Type=simple
+User=routerpanel
+Group=routerpanel
+WorkingDirectory=/opt/router-panel
+# El panel se sirve por HTTPS (nginx): la cookie de sesión sólo viaja cifrada.
+Environment=SESSION_COOKIE_SECURE=True
+ExecStart=/opt/router-panel/venv/bin/gunicorn --workers 2 --worker-class gthread --threads 4 --bind 127.0.0.1:5001 --access-logfile - --no-control-socket wsgi:app
+Restart=on-failure
+RestartSec=3
+UMask=0007
+# Endurecimiento: sin privilegios nuevos, sistema de sólo lectura salvo sus datos
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_UNIX
+ReadWritePaths=/var/lib/router/solicitudes /var/lib/router-panel /var/log/router-panel
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titulo %}Acceso denegado{% endblock %}
+{% block titulo_pagina %}Acceso denegado{% endblock %}
+{% block contenido %}
+<div class="tt-error-pagina">
+    <i class="bi bi-slash-circle" aria-hidden="true"></i>
+    <h2>403 · Acceso denegado</h2>
+    <p>No tienes permisos suficientes para realizar esta acción.</p>
+    <a class="btn tt-btn-primario" href="{{ url_for('dashboard.index') }}"><i class="bi bi-house" aria-hidden="true"></i> Volver al dashboard</a>
+</div>
+{% endblock %}
+{% block contenido_publico %}
+<div class="tt-login-wrap">
+    <div class="card tt-login-card">
+        <div class="card-body tt-error-pagina">
+            <i class="bi bi-slash-circle" aria-hidden="true"></i>
+            <h2>403 · Acceso denegado</h2>
+            <p>No tienes permisos suficientes para realizar esta acción.</p>
+            <a class="btn tt-btn-primario" href="{{ url_for('auth.login') }}"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Ir a iniciar sesión</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

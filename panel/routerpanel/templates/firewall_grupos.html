@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block titulo %}Grupos · Firewall{% endblock %}
+{% block titulo_pagina %}Grupos de firewall{% endblock %}
+{% block contenido %}
+
+{% set es_admin = session.get('rol') == 'admin' %}
+
+<nav aria-label="Migas de pan" class="tt-fw-migas">
+    <a href="{{ url_for('firewall.index') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a las reglas</a>
+</nav>
+
+<div class="alert tt-alerta-info">
+    <i class="bi bi-collection" aria-hidden="true"></i>
+    <span>Un grupo reúne varios dispositivos (por MAC) o varias direcciones IP para usarlos juntos
+    como origen o destino de una regla. Si borras un grupo que alguna regla está usando, el router
+    te lo dirá y no lo borrará.</span>
+</div>
+
+{% if not fw_disponible %}
+<div class="alert tt-alerta-warning" role="alert">
+    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+    <span>El router todavía no ha enviado su configuración de firewall; recarga en unos segundos
+    antes de guardar.</span>
+</div>
+{% endif %}
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">{{ 'Editar grupo' if grupo_editar else 'Nuevo grupo' }}</h2>
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <form method="post" action="{{ url_for('firewall.grupo_guardar') }}" class="tt-fw-form">
+                {{ form.hidden_tag() }}
+
+                <div class="tt-fw-form-fila">
+                    <div class="tt-fw-campo">
+                        <label class="form-label" for="tt-fw-grupo-nombre">Nombre</label>
+                        {{ form.nombre(class_="form-control", id="tt-fw-grupo-nombre", placeholder="Por ejemplo: Móviles de los niños") }}
+                    </div>
+                    <div class="tt-fw-campo tt-fw-campo-estrecho">
+                        <label class="form-label" for="tt-fw-grupo-tipo">Tipo</label>
+                        {{ form.tipo(class_="form-select", id="tt-fw-grupo-tipo") }}
+                    </div>
+                </div>
+
+                <fieldset class="tt-fw-form-grupo">
+                    <legend class="tt-fw-form-legend">Miembros</legend>
+                    <p class="tt-fw-ayuda">Marca los dispositivos que quieras incluir o escribe las
+                    direcciones a mano (una por línea).</p>
+                    {% if dispositivos %}
+                    <div class="tt-fw-miembros-lista">
+                        {% for d in dispositivos %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="miembros"
+                                   value="{{ d.mac }}" id="tt-fw-miembro-{{ d.mac }}"
+                                   {{ 'checked' if grupo_editar and d.mac in grupo_editar.miembros }}>
+                            <label class="form-check-label" for="tt-fw-miembro-{{ d.mac }}">
+                                {{ d.nombre }} <span class="tt-fw-miembro-datos">{{ d.mac }}{% if d.ip %} · {{ d.ip }}{% endif %}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="tt-fw-campo tt-fw-campo-ancho">
+                        <label class="form-label" for="tt-fw-grupo-miembros-texto">Otros miembros (uno por línea)</label>
+                        {{ form.miembros_texto(class_="form-control tt-fw-miembros-texto", id="tt-fw-grupo-miembros-texto", rows="3", placeholder="aa:bb:cc:dd:ee:01 · 192.168.50.50") }}
+                    </div>
+                </fieldset>
+
+                <div class="tt-fw-form-acciones">
+                    <button class="btn tt-btn-primario" type="submit">
+                        <i class="bi bi-check-lg" aria-hidden="true"></i> {{ 'Guardar grupo' if grupo_editar else 'Crear grupo' }}
+                    </button>
+                    {% if grupo_editar %}
+                    <a class="btn tt-btn-outline-primario" href="{{ url_for('firewall.grupos') }}">Cancelar edición</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Grupos existentes</h2>
+    {% if not grupos %}
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <p class="tt-sin-datos">
+                <i class="bi bi-collection" aria-hidden="true"></i>
+                No hay grupos todavía.
+            </p>
+        </div>
+    </div>
+    {% else %}
+    <div class="tt-tabla-wrap">
+        <table class="table tt-tabla tt-tabla-responsive">
+            <thead>
+                <tr>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">Tipo</th>
+                    <th scope="col">Miembros</th>
+                    <th scope="col">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in grupos %}
+                <tr>
+                    <td data-label="Nombre">
+                        <span class="tt-fw-nombre">{{ g.nombre }}</span>
+                        <small class="tt-fw-comentario tt-mono">{{ g.id }}</small>
+                    </td>
+                    <td data-label="Tipo">{{ 'MAC' if g.tipo == 'mac' else 'IP' }}</td>
+                    <td data-label="Miembros">
+                        {% if g.miembros %}
+                        <ul class="tt-fw-miembros">
+                            {% for m in g.miembros %}
+                            <li class="tt-mono">{{ m }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <span class="tt-fw-no">Sin miembros</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Acciones" class="tt-acciones">
+                        {% if es_admin %}
+                        <div class="tt-fw-botones-fila">
+                            <a class="btn btn-sm tt-btn-icono"
+                               href="{{ url_for('firewall.grupos', editar=g.id) }}"
+                               title="Editar el grupo «{{ g.nombre }}»">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                                <span class="visually-hidden">Editar</span>
+                            </a>
+                            <form method="post" action="{{ url_for('firewall.grupo_eliminar') }}"
+                                  class="tt-fw-form-borrar">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="version" value="{{ fw.version }}">
+                                <input type="hidden" name="grupo_id" value="{{ g.id }}">
+                                <button type="submit" class="btn btn-sm tt-btn-icono tt-btn-icono-peligro"
+                                        title="Borrar el grupo «{{ g.nombre }}»">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Borrar</span>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</section>
+
+{% endblock %}

@@ -1,0 +1,49 @@
+# Panel del router: proxy inverso hacia gunicorn (127.0.0.1:5001), por HTTPS.
+# PLANTILLA: el instalador sustituye los marcadores y lo instala como
+# /etc/nginx/sites-available/router-panel (o el directorio equivalente de tu
+# distribución). Marcadores:
+#   @LAN_RED@ — red local que puede usar el panel (ej. 192.168.50.0/24).
+#   @CERT@ / @CLAVE@ — fichero del certificado TLS y de su clave privada.
+# Sólo se admite la red LAN (@LAN_RED@); el cortafuegos (inet router) ya
+# impide llegar desde las WAN. HTTP sólo redirige a HTTPS: la contraseña del
+# panel no viaja nunca en claro. El instalador genera un certificado
+# autofirmado en /etc/router/tls/panel.* (el navegador avisará la primera
+# vez, porque no es de una entidad conocida); si prefieres usar un
+# certificado propio (por ejemplo de Let's Encrypt), pon aquí su ruta y la
+# de su clave privada.
+server {
+    listen 80 default_server;
+    server_name _;
+    allow @LAN_RED@;
+    allow 127.0.0.1;
+    deny all;
+    server_tokens off;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl default_server;
+    server_name _;
+
+    ssl_certificate     @CERT@;
+    ssl_certificate_key @CLAVE@;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:panel:1m;
+
+    allow @LAN_RED@;
+    allow 127.0.0.1;
+    deny all;
+
+    client_max_body_size 64k;
+    server_tokens off;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    location / {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 30s;
+    }
+}

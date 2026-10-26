@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block titulo %}Registro{% endblock %}
+{% block titulo_pagina %}Registro de operaciones{% endblock %}
+{% block contenido %}
+
+{% if error %}
+<div class="alert tt-alerta-error" role="alert">
+    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+    <span>{{ error }}</span>
+</div>
+{% endif %}
+
+<div class="tt-registro-cabecera">
+    <div class="tt-filtros tt-registro-filtros" role="group" aria-label="Filtros rápidos del registro">
+        <button type="button" class="tt-filtro-chip activo" data-filtro="todos" aria-pressed="true">Todos</button>
+        <button type="button" class="tt-filtro-chip" data-filtro="error" aria-pressed="false">Errores</button>
+    </div>
+    <label class="tt-buscador" for="tt-registro-busqueda">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="search" id="tt-registro-busqueda" class="form-control" placeholder="Buscar por acción, usuario o mensaje" autocomplete="off">
+    </label>
+</div>
+
+<div class="tt-registro-linea" id="tt-registro-linea">
+    {% for grupo in grupos %}
+    <div class="tt-registro-grupo">
+        <h2 class="tt-registro-dia">{{ grupo.etiqueta }}</h2>
+        <ol class="tt-registro-items">
+            {% for op in grupo.operaciones %}
+            <li class="tt-registro-item"
+                data-resultado="{{ 'ok' if op.ok else 'error' }}"
+                data-busqueda="{{ (op.accion ~ ' ' ~ op.usuario ~ ' ' ~ op.mensaje)|lower }}">
+                <span class="tt-registro-icono{{ ' tt-registro-icono-error' if not op.ok else '' }}" aria-hidden="true"><i class="bi {{ op.icono }}"></i></span>
+                <div class="tt-registro-cuerpo">
+                    <div class="tt-registro-linea-1">
+                        <span class="tt-registro-accion">{{ op.accion }}</span>
+                        {% if op.ok %}
+                        <span class="badge tt-badge-ok"><i class="bi bi-check-circle" aria-hidden="true"></i> OK</span>
+                        {% else %}
+                        <span class="badge tt-badge-error"><i class="bi bi-x-circle" aria-hidden="true"></i> Error</span>
+                        {% endif %}
+                    </div>
+                    <p class="tt-registro-mensaje">{{ op.mensaje }}</p>
+                    {% if op.datos_fmt %}
+                    <details class="tt-registro-datos">
+                        <summary>Datos</summary>
+                        <code>{{ op.datos_fmt }}</code>
+                    </details>
+                    {% endif %}
+                </div>
+                <div class="tt-registro-meta">
+                    <span class="tt-registro-usuario"><i class="bi bi-person" aria-hidden="true"></i> {{ op.usuario }}</span>
+                    <span class="tt-registro-hora" title="{{ op.fecha_abs }}">{{ op.relativo }}</span>
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+    </div>
+    {% else %}
+    <p class="tt-sin-datos"><i class="bi bi-journal-text" aria-hidden="true"></i> No hay operaciones registradas todavía.</p>
+    {% endfor %}
+</div>
+
+{% if grupos %}
+<p class="tt-sin-datos d-none" id="tt-registro-sin-resultados"><i class="bi bi-search" aria-hidden="true"></i> Ninguna operación coincide con la búsqueda o el filtro.</p>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/registro.js') }}"></script>
+{% endblock %}

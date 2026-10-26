@@ -1,0 +1,2988 @@
+/* Panel del router doméstico - identidad "Roble Router"
+ * Rediseño visual de presentación. Sin estilos inline, sin JS inline.
+ * Modo oscuro automático vía prefers-color-scheme (variables CSS). */
+
+:root {
+    /* Marca */
+    --tt-navy: #0b2545;
+    --tt-azul: #134074;
+    --tt-cian: #13a8d8;
+    --tt-azul-claro: #8da9c4;
+
+    /* Superficies y texto */
+    --tt-fondo: #eef2f7;
+    --tt-superficie: #ffffff;
+    --tt-superficie-2: #f3f6fa;
+    --tt-blanco: #ffffff;
+    --tt-texto: #13293d;
+    --tt-texto-sec: #5b6b82;
+    --tt-borde: rgba(11, 37, 69, 0.10);
+
+    /* Estados */
+    --tt-ok: #1a9c5a;
+    --tt-ok-bg: rgba(26, 156, 90, 0.12);
+    --tt-advertencia: #c8870a;
+    --tt-advertencia-bg: rgba(200, 135, 10, 0.12);
+    --tt-error: #c0392b;
+    --tt-error-bg: rgba(192, 57, 43, 0.12);
+    --tt-info-bg: rgba(19, 168, 216, 0.10);
+    --tt-neutro: #6b7a90;
+    --tt-neutro-bg: rgba(107, 122, 144, 0.12);
+
+    /* Tonos de estado YA oscurecidos para TEXTO pequeño sobre fondo claro
+       (chips de acción del firewall): AA ≥ 4.5:1. En fondo oscuro los
+       estados normales ya cumplen, así que el bloque dark los reutiliza. */
+    --tt-ok-texto: #157a48;
+    --tt-advertencia-texto: #8a5c04;
+
+    /* Colores de línea (reparto / identificación de WAN), tintas de azul */
+    --tt-linea-1: #13a8d8;
+    --tt-linea-2: #5fd0f0;
+    --tt-linea-3: #134074;
+    --tt-linea-4: #0b2545;
+    --tt-linea-5: #0e7fa6;
+    --tt-linea-6: #5c7fa3;
+
+    /* Oro/ámbar: único tono "de alerta contenida" permitido en datos (p. ej.
+       consultas DNS bloqueadas) -- nunca rojo/verde para series de datos. */
+    --tt-oro: #c9a227;
+    --tt-oro-bg: rgba(201, 162, 39, 0.14);
+
+    /* Geometría */
+    --tt-radio-sm: 10px;
+    --tt-radio: 14px;
+    --tt-radio-lg: 18px;
+    --tt-sombra: 0 2px 10px rgba(11, 37, 69, 0.08);
+    --tt-sombra-lg: 0 14px 34px rgba(11, 37, 69, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --tt-fondo: #0a1726;
+        --tt-superficie: #122235;
+        --tt-superficie-2: #172a40;
+        --tt-texto: #e3ecf5;
+        --tt-texto-sec: #92a7c1;
+        --tt-borde: rgba(255, 255, 255, 0.10);
+
+        --tt-ok: #35c17d;
+        --tt-ok-bg: rgba(53, 193, 125, 0.18);
+        --tt-advertencia: #e0a83c;
+        --tt-advertencia-bg: rgba(224, 168, 60, 0.18);
+        --tt-error: #e6675a;
+        --tt-error-bg: rgba(230, 103, 90, 0.18);
+        --tt-info-bg: rgba(19, 168, 216, 0.16);
+        --tt-neutro: #92a7c1;
+        --tt-neutro-bg: rgba(146, 167, 193, 0.14);
+
+        --tt-ok-texto: #35c17d;
+        --tt-advertencia-texto: #e0a83c;
+
+        --tt-oro: #e0b84a;
+        --tt-oro-bg: rgba(224, 184, 74, 0.18);
+
+        --tt-sombra: 0 2px 14px rgba(0, 0, 0, 0.45);
+        --tt-sombra-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body.tt-body {
+    margin: 0;
+    background: var(--tt-fondo);
+    color: var(--tt-texto);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+a {
+    color: var(--tt-azul);
+}
+
+:focus-visible {
+    outline: 3px solid var(--tt-cian);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* ---------- layout general ---------- */
+
+.tt-app {
+    display: flex;
+    min-height: 100vh;
+}
+
+.tt-contenido {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tt-main {
+    padding: 1.5rem;
+    flex: 1;
+    width: 100%;
+    max-width: 1600px;
+}
+
+.tt-main-sin-sesion {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: radial-gradient(circle at 20% 15%, rgba(19, 168, 216, 0.25), transparent 55%),
+        linear-gradient(145deg, var(--tt-navy) 0%, var(--tt-azul) 65%, #0d3a66 100%);
+}
+
+/* ---------- barra lateral / offcanvas ---------- */
+
+.tt-sidebar {
+    --bs-offcanvas-width: 272px;
+    background: linear-gradient(180deg, var(--tt-navy) 0%, var(--tt-azul) 100%);
+    color: var(--tt-blanco);
+}
+
+.tt-sidebar .offcanvas-header,
+.tt-sidebar-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 1.2rem 1.1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.tt-marca {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: var(--tt-blanco);
+    min-width: 0;
+}
+
+.tt-marca-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    flex-shrink: 0;
+    border-radius: var(--tt-radio-sm);
+    background: rgba(19, 168, 216, 0.18);
+    color: var(--tt-cian);
+    font-size: 1.3rem;
+}
+
+.tt-marca-texto {
+    display: flex;
+    flex-direction: column;
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tt-marca-texto small {
+    font-weight: 500;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tt-cian);
+}
+
+.tt-sidebar .offcanvas-body,
+.tt-sidebar-cuerpo {
+    display: flex;
+    flex-direction: column;
+    padding: 0.9rem 0.8rem;
+    gap: 0.6rem;
+    flex: 1;
+}
+
+.tt-nav {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+}
+
+.tt-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: var(--tt-radio-sm);
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.tt-nav-link i {
+    font-size: 1.05rem;
+    width: 1.2rem;
+    text-align: center;
+}
+
+.tt-nav-link:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--tt-blanco);
+}
+
+.tt-nav-link.activo {
+    background: var(--tt-cian);
+    color: var(--tt-navy);
+    font-weight: 600;
+}
+
+.tt-sidebar-usuario {
+    padding-top: 0.8rem;
+    margin-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tt-usuario-info {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    padding: 0.3rem 0.9rem;
+}
+
+.tt-usuario-info i {
+    font-size: 1.4rem;
+    color: var(--tt-cian);
+}
+
+.tt-usuario-texto {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    overflow: hidden;
+}
+
+.tt-rol {
+    opacity: 0.75;
+    text-transform: capitalize;
+}
+
+.tt-btn-salir {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--tt-blanco);
+    border: none;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--tt-radio-sm);
+    padding: 0.55rem 0.9rem;
+}
+
+.tt-btn-salir:hover {
+    background: rgba(255, 255, 255, 0.22);
+    color: var(--tt-blanco);
+}
+
+/* ---------- cabecera de página ---------- */
+
+.tt-topbar {
+    background: var(--tt-superficie);
+    border-bottom: 1px solid var(--tt-borde);
+    box-shadow: var(--tt-sombra);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 1.4rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.tt-boton-menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: var(--tt-radio-sm);
+    border: 1px solid var(--tt-borde);
+    background: var(--tt-superficie-2);
+    color: var(--tt-azul);
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.tt-boton-menu:hover {
+    background: var(--tt-info-bg);
+}
+
+.tt-topbar-titulo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.tt-titulo-pagina {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--tt-navy);
+    margin: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-titulo-pagina {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-topbar-sub {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--tt-texto-sec);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.tt-topbar-insignias {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.tt-badge-fase {
+    font-weight: 600;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.tt-badge-fase-preparacion {
+    background: var(--tt-advertencia-bg);
+    color: var(--tt-advertencia);
+}
+
+.tt-badge-fase-produccion {
+    background: var(--tt-ok-bg);
+    color: var(--tt-ok);
+}
+
+/* ---------- secciones / tarjetas genéricas ---------- */
+
+.tt-seccion {
+    margin-bottom: 1.8rem;
+}
+
+.tt-seccion-cabecera {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.tt-subtitulo {
+    color: var(--tt-navy);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 0.9rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-subtitulo {
+        color: var(--tt-texto);
+    }
+}
+
+.card {
+    background: var(--tt-superficie);
+    color: var(--tt-texto);
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio);
+    box-shadow: var(--tt-sombra);
+}
+
+.tt-tarjeta, .tt-tarjeta-wan, .tt-tarjeta-form, .tt-tarjeta-linea {
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio);
+    box-shadow: var(--tt-sombra);
+}
+
+.tt-card-titulo {
+    color: var(--tt-navy);
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-card-titulo {
+        color: var(--tt-texto);
+    }
+}
+
+/* ---------- KPIs del dashboard ---------- */
+
+.tt-tarjetas-resumen {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.8rem;
+}
+
+.tt-kpi {
+    background: var(--tt-superficie);
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio);
+    box-shadow: var(--tt-sombra);
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.tt-kpi-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+}
+
+.tt-kpi-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    flex-shrink: 0;
+    border-radius: 50%;
+    font-size: 1.25rem;
+    background: var(--tt-info-bg);
+    color: var(--tt-cian);
+}
+
+.tt-kpi-icono-ok { background: var(--tt-ok-bg); color: var(--tt-ok); }
+.tt-kpi-icono-error { background: var(--tt-error-bg); color: var(--tt-error); }
+.tt-kpi-icono-advertencia { background: var(--tt-advertencia-bg); color: var(--tt-advertencia); }
+.tt-kpi-icono-neutro { background: var(--tt-neutro-bg); color: var(--tt-neutro); }
+
+.tt-kpi-texto {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tt-kpi-valor {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--tt-navy);
+    line-height: 1.2;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-kpi-valor {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-kpi-etiqueta {
+    color: var(--tt-texto-sec);
+    font-size: 0.85rem;
+}
+
+/* ---------- barras de progreso finas (propias, sin inline style: el ancho
+   lo fija panel.js a partir de data-pct) ---------- */
+
+.tt-barra {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--tt-superficie-2);
+    overflow: hidden;
+    border: 1px solid var(--tt-borde);
+}
+
+.tt-barra-relleno {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: inherit;
+    transition: width 0.4s ease;
+    background: var(--tt-cian);
+}
+
+.tt-barra-relleno.tt-barra-ok { background: var(--tt-ok); }
+.tt-barra-relleno.tt-barra-advertencia { background: var(--tt-advertencia); }
+.tt-barra-relleno.tt-barra-error { background: var(--tt-error); }
+.tt-barra-relleno.tt-barra-neutro { background: var(--tt-neutro); }
+
+.tt-barra-peso {
+    height: 6px;
+    margin-top: 0.3rem;
+}
+
+.tt-barra-peso-relleno {
+    background: var(--tt-cian);
+}
+
+/* ---------- líneas WAN (dashboard) ---------- */
+
+.tt-grid-wan {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.tt-tarjeta-linea {
+    background: var(--tt-superficie);
+    border-left: 4px solid var(--tt-cian);
+}
+
+.tt-linea-1 { border-left-color: var(--tt-linea-1); }
+.tt-linea-2 { border-left-color: var(--tt-linea-2); }
+.tt-linea-3 { border-left-color: var(--tt-linea-3); }
+.tt-linea-4 { border-left-color: var(--tt-linea-4); }
+.tt-linea-5 { border-left-color: var(--tt-linea-5); }
+.tt-linea-6 { border-left-color: var(--tt-linea-6); }
+
+.tt-linea-cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-bottom: 0.7rem;
+}
+
+.tt-linea-nombre {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tt-linea-nombre strong {
+    color: var(--tt-navy);
+    font-size: 1.02rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-linea-nombre strong {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-linea-telefono {
+    color: var(--tt-texto-sec);
+    font-size: 0.82rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tt-linea-latencia {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.88rem;
+    margin-bottom: 0.6rem;
+}
+
+.tt-punto-calidad {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--tt-neutro);
+}
+
+.tt-punto-ok { background: var(--tt-ok); }
+.tt-punto-advertencia { background: var(--tt-advertencia); }
+.tt-punto-error { background: var(--tt-error); }
+.tt-punto-neutro { background: var(--tt-neutro); }
+
+.tt-linea-medidores {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.6rem;
+}
+
+.tt-medidor {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.88rem;
+    color: var(--tt-texto);
+}
+
+.tt-medidor i {
+    color: var(--tt-cian);
+    font-size: 1rem;
+}
+
+.tt-linea-secundario {
+    color: var(--tt-texto-sec);
+    font-size: 0.82rem;
+    margin: 0 0 0.6rem;
+}
+
+.tt-linea-balanceo {
+    font-size: 0.85rem;
+    color: var(--tt-texto-sec);
+}
+
+.tt-linea-peso-valor {
+    display: inline-block;
+    margin-top: 0.2rem;
+    font-size: 0.78rem;
+}
+
+/* ---------- reparto del tráfico ---------- */
+
+.tt-reparto {
+    display: flex;
+    height: 16px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--tt-superficie-2);
+    border: 1px solid var(--tt-borde);
+}
+
+.tt-reparto-segmento {
+    flex: 0 0 auto;
+    width: 0%;
+    height: 100%;
+    background: var(--tt-cian);
+}
+
+.tt-reparto-leyenda {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    padding: 0;
+    margin: 0.8rem 0 0;
+    font-size: 0.85rem;
+    color: var(--tt-texto-sec);
+}
+
+.tt-reparto-leyenda li {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.tt-leyenda-punto {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.tt-leyenda-punto.tt-linea-1 { background: var(--tt-linea-1); }
+.tt-leyenda-punto.tt-linea-2 { background: var(--tt-linea-2); }
+.tt-leyenda-punto.tt-linea-3 { background: var(--tt-linea-3); }
+.tt-leyenda-punto.tt-linea-4 { background: var(--tt-linea-4); }
+.tt-leyenda-punto.tt-linea-5 { background: var(--tt-linea-5); }
+.tt-leyenda-punto.tt-linea-6 { background: var(--tt-linea-6); }
+
+.tt-reparto-segmento.tt-linea-1 { background: var(--tt-linea-1); }
+.tt-reparto-segmento.tt-linea-2 { background: var(--tt-linea-2); }
+.tt-reparto-segmento.tt-linea-3 { background: var(--tt-linea-3); }
+.tt-reparto-segmento.tt-linea-4 { background: var(--tt-linea-4); }
+.tt-reparto-segmento.tt-linea-5 { background: var(--tt-linea-5); }
+.tt-reparto-segmento.tt-linea-6 { background: var(--tt-linea-6); }
+
+/* ---------- chips de servicios ---------- */
+
+.tt-chips {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.tt-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: var(--tt-neutro-bg);
+    color: var(--tt-neutro);
+}
+
+.tt-chip-ok { background: var(--tt-ok-bg); color: var(--tt-ok); }
+.tt-chip-error { background: var(--tt-error-bg); color: var(--tt-error); }
+.tt-chip-gris { background: var(--tt-neutro-bg); color: var(--tt-neutro); }
+
+/* ---------- login ---------- */
+
+.tt-login-wrap {
+    width: 100%;
+    max-width: 420px;
+    padding: 1rem;
+}
+
+.tt-login-card {
+    border: none;
+    border-radius: var(--tt-radio-lg);
+    box-shadow: var(--tt-sombra-lg);
+}
+
+.tt-login-marca {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: var(--tt-navy);
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-login-marca {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-login-marca-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--tt-radio-sm);
+    background: var(--tt-info-bg);
+    color: var(--tt-cian);
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+
+.tt-login-marca h1 {
+    font-size: 1.4rem;
+    margin: 0;
+}
+
+.tt-login-sub {
+    color: var(--tt-texto-sec);
+    margin: 0.6rem 0 1.3rem;
+}
+
+/* ---------- botones ---------- */
+
+.tt-btn-primario {
+    background: var(--tt-cian);
+    border: none;
+    color: var(--tt-navy);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border-radius: var(--tt-radio-sm);
+    padding: 0.5rem 1rem;
+}
+
+.tt-btn-primario:hover {
+    background: #0f90ba;
+    color: var(--tt-blanco);
+}
+
+.tt-btn-secundario {
+    background: var(--tt-azul-claro);
+    border: none;
+    color: var(--tt-navy);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: var(--tt-radio-sm);
+}
+
+.tt-btn-peligro {
+    background: var(--tt-error);
+    border: none;
+    color: var(--tt-blanco);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: var(--tt-radio-sm);
+}
+
+.tt-btn-outline-primario {
+    background: transparent;
+    border: 1.5px solid var(--tt-cian);
+    color: var(--tt-azul);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: var(--tt-radio-sm);
+    width: auto;
+}
+
+.tt-btn-outline-primario:hover {
+    background: var(--tt-info-bg);
+}
+
+.tt-btn-outline-primario:disabled {
+    opacity: 0.6;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-btn-outline-primario {
+        color: var(--tt-cian);
+    }
+}
+
+/* Botón cuadrado de icono (acciones de fila: subir/bajar/editar/borrar).
+   Siempre del mismo tamaño para que la columna de acciones no baile. */
+.tt-btn-icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    border: 1px solid var(--tt-borde);
+    border-radius: 8px;
+    background: var(--tt-superficie);
+    color: var(--tt-azul);
+}
+
+.tt-btn-icono:hover {
+    background: var(--tt-info-bg);
+    color: var(--tt-azul);
+}
+
+.tt-btn-icono-peligro {
+    color: var(--tt-error);
+}
+
+.tt-btn-icono-peligro:hover {
+    background: var(--tt-error-bg);
+    color: var(--tt-error);
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-btn-icono {
+        color: var(--tt-cian);
+    }
+}
+
+/* ---------- mensajes flash ---------- */
+
+.tt-mensajes {
+    margin-bottom: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tt-alerta-ok, .tt-alerta-error, .tt-alerta-warning, .tt-alerta-info {
+    border: none;
+    border-radius: var(--tt-radio-sm);
+    padding: 0.8rem 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+}
+
+.tt-alerta-ok {
+    background: var(--tt-ok-bg);
+    color: var(--tt-ok);
+}
+
+.tt-alerta-error {
+    background: var(--tt-error-bg);
+    color: var(--tt-error);
+}
+
+.tt-alerta-warning {
+    background: var(--tt-advertencia-bg);
+    color: var(--tt-advertencia);
+}
+
+.tt-alerta-info {
+    background: var(--tt-info-bg);
+    color: var(--tt-azul);
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-alerta-info {
+        color: var(--tt-cian);
+    }
+}
+
+/* ---------- avisos flotantes (toasts) ---------- */
+
+/* avisos.js mueve el foco aquí (tabindex="-1" en base.html) cuando se
+   cierra el último aviso con foco dentro. Es un destino programático, no
+   un elemento interactivo normal, así que no lleva el anillo de foco
+   habitual (mayor especificidad que :focus-visible por el #id). */
+#tt-main:focus {
+    outline: none;
+}
+
+.tt-toast-wrapper {
+    position: fixed;
+    top: 4.75rem;
+    right: 1rem;
+    /* Por debajo del backdrop/offcanvas (1040/1045) y de los modales (1055)
+       de Bootstrap, para no tapar un diálogo abierto; por encima de la
+       topbar (z-index: 10) y del resto del contenido. */
+    z-index: 1030;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: calc(100% - 2rem);
+    max-width: 380px;
+    max-height: calc(100vh - 6.75rem);
+    overflow-y: auto;
+    /* overflow-x explícito: si se deja en "visible" por defecto, al fijar
+       overflow-y el eje X pasaría a "auto" igualmente y recortaría la
+       sombra de los avisos y el desplazamiento lateral de la animación de
+       salida. El padding lateral/inferior deja sitio para que ninguna de
+       las dos se recorte contra el borde del scroll. */
+    overflow-x: hidden;
+    padding: 0 1rem 1rem;
+    pointer-events: none;
+}
+
+/* Dos regiones vivas dentro del mismo wrapper fijo, apiladas en una sola
+   columna (los urgentes van primero en el DOM = arriba). Cada una llega
+   vacía del servidor; avisos.js reparte ahí los avisos reales. */
+#tt-toast-urgente,
+#tt-toast-contenedor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+/* Las regiones vivas NUNCA se ocultan (display:none las sacaría del árbol
+   de accesibilidad y el lector no anunciaría lo que se inserte). El wrapper
+   no tiene gap; la separación entre ambas regiones sólo existe cuando la de
+   urgentes tiene algo. */
+#tt-toast-urgente:not(:empty) {
+    margin-bottom: 0.6rem;
+}
+
+/* #tt-toast-origen: en el flujo normal del documento (no fixed), justo
+   antes de <main> (ver base.html). Es lo que se ve sin JS: una lista de
+   avisos normal en la página, que no tapa nada porque no está fuera de
+   flujo. Con JS, avisos.js vacía este contenedor moviendo sus nodos a las
+   regiones vivas de arriba. */
+.tt-toast-origen {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    width: calc(100% - 2rem);
+    max-width: 380px;
+    margin: 1rem 1rem 0 auto;
+}
+
+.tt-toast-origen:empty {
+    display: none;
+}
+
+/* Con JS (clase puesta en <html> por tt-js.js, en <head>) el origen no
+   ocupa sitio: sus avisos saltan a la capa fija sin mover la maquetación. */
+.tt-js .tt-toast-origen {
+    position: absolute;
+    visibility: hidden;
+}
+
+@media (max-width: 576px) {
+    .tt-toast-origen {
+        margin: 1rem auto 0;
+    }
+}
+
+.tt-toast {
+    pointer-events: auto;
+    position: relative;
+    background: var(--tt-superficie);
+    border: 1px solid var(--tt-borde);
+    border-left: 4px solid var(--tt-neutro);
+    border-radius: var(--tt-radio-sm);
+    box-shadow: var(--tt-sombra-lg);
+    padding: 0.8rem 2.3rem 0.8rem 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    color: var(--tt-texto);
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.tt-toast.tt-toast-entrando {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.tt-toast.tt-toast-saliendo {
+    opacity: 0;
+    transform: translateX(16px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tt-toast {
+        transition: none;
+    }
+}
+
+.tt-toast.tt-alerta-ok {
+    border-left-color: var(--tt-ok);
+}
+
+.tt-toast.tt-alerta-error {
+    border-left-color: var(--tt-error);
+}
+
+.tt-toast.tt-alerta-warning {
+    border-left-color: var(--tt-advertencia);
+}
+
+.tt-toast.tt-alerta-info {
+    border-left-color: var(--tt-cian);
+}
+
+.tt-toast .tt-toast-icono {
+    font-size: 1.1rem;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+.tt-toast .tt-toast-texto {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.tt-toast-cerrar {
+    /* Sin JS el botón no hace nada (no hay manejador posible), así que se
+       mantiene oculto hasta que avisos.js marca el wrapper como
+       inicializado (clase .tt-toast-js). Sin JS tampoco hay cierre
+       automático: el aviso se queda visible en la página (en su sitio, no
+       flotante) hasta que se recargue. */
+    display: none;
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border: none;
+    border-radius: var(--tt-radio-sm);
+    background: transparent;
+    color: var(--tt-texto-sec);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.tt-toast-wrapper.tt-toast-js .tt-toast-cerrar {
+    display: inline-flex;
+}
+
+.tt-toast-cerrar:hover {
+    background: var(--tt-superficie-2);
+    color: var(--tt-texto);
+}
+
+@media (max-width: 576px) {
+    .tt-toast-wrapper {
+        top: auto;
+        bottom: 1rem;
+        right: 0;
+        left: 0;
+        margin: 0 auto;
+        align-items: stretch;
+        width: calc(100% - 2rem);
+        max-width: 380px;
+        /* En móvil el wrapper no cuelga de la topbar (se ancla al borde
+           inferior), así que el margen a descontar es el mismo arriba y
+           abajo: el valor "general" de escritorio no aplica aquí. */
+        max-height: calc(100vh - 2rem);
+    }
+
+    .tt-toast {
+        padding-right: 3rem;
+    }
+
+    .tt-toast-cerrar {
+        /* Objetivo táctil >= 44x44px en móvil. */
+        top: 0.3rem;
+        right: 0.3rem;
+        width: 44px;
+        height: 44px;
+    }
+}
+
+/* ---------- formularios ---------- */
+
+.form-control, .form-select {
+    background-color: var(--tt-superficie);
+    color: var(--tt-texto);
+    border: 1px solid var(--tt-borde);
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--tt-superficie);
+    color: var(--tt-texto);
+    border-color: var(--tt-cian);
+    box-shadow: 0 0 0 0.2rem rgba(19, 168, 216, 0.25);
+}
+
+.form-control::placeholder {
+    color: var(--tt-texto-sec);
+}
+
+.form-label {
+    color: var(--tt-texto-sec);
+    font-weight: 600;
+    font-size: 0.86rem;
+    margin-bottom: 0.3rem;
+}
+
+.tt-tarjetas-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.2rem;
+}
+
+.tt-campos {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.9rem 1.2rem;
+    margin-bottom: 0.9rem;
+}
+
+@media (min-width: 768px) {
+    .tt-campos {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .tt-campos .tt-campo-ancho {
+        grid-column: 1 / -1;
+    }
+}
+
+.tt-campo {
+    margin-bottom: 0;
+    min-width: 0;
+}
+
+.tt-form-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.tt-acciones {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 220px;
+}
+
+/* ---------- badges de estado ---------- */
+
+.tt-badge-ok {
+    background: var(--tt-ok);
+    color: var(--tt-blanco);
+}
+
+.tt-badge-error {
+    background: var(--tt-error);
+    color: var(--tt-blanco);
+}
+
+.tt-badge-advertencia {
+    background: var(--tt-advertencia);
+    color: var(--tt-blanco);
+}
+
+.tt-badge-gris {
+    background: var(--tt-azul-claro);
+    color: var(--tt-navy);
+}
+
+.tt-id-corto {
+    display: inline-block;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+/* ---------- tablas ---------- */
+
+.tt-tabla-wrap {
+    overflow-x: auto;
+    background: var(--tt-superficie);
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio);
+    box-shadow: var(--tt-sombra);
+    padding: 0.5rem;
+}
+
+.tt-tabla {
+    margin-bottom: 0;
+    color: var(--tt-texto);
+}
+
+.tt-tabla thead {
+    background: var(--tt-superficie-2);
+}
+
+.tt-tabla th {
+    color: var(--tt-texto-sec);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-weight: 700;
+    border-bottom-color: var(--tt-borde) !important;
+}
+
+.tt-tabla td {
+    border-color: var(--tt-borde) !important;
+    vertical-align: middle;
+}
+
+.tt-sin-datos {
+    text-align: center;
+    color: var(--tt-texto-sec);
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tt-sin-datos i {
+    font-size: 1.8rem;
+    color: var(--tt-azul-claro);
+}
+
+/* Patrón responsive "tabla -> tarjetas" por debajo de 768px */
+@media (max-width: 767.98px) {
+    .tt-tabla-responsive thead {
+        display: none;
+    }
+
+    .tt-tabla-responsive, .tt-tabla-responsive tbody,
+    .tt-tabla-responsive tr, .tt-tabla-responsive td {
+        display: block;
+        width: 100%;
+    }
+
+    .tt-tabla-responsive tr {
+        margin-bottom: 0.9rem;
+        border: 1px solid var(--tt-borde);
+        border-radius: var(--tt-radio);
+        box-shadow: var(--tt-sombra);
+        padding: 0.4rem 0.9rem;
+        background: var(--tt-superficie);
+    }
+
+    .tt-tabla-responsive tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .tt-tabla-responsive td {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        text-align: right;
+        padding: 0.5rem 0;
+        border-top: 1px solid var(--tt-borde);
+        border-bottom: none !important;
+    }
+
+    .tt-tabla-responsive td:first-child {
+        border-top: none;
+    }
+
+    .tt-tabla-responsive td[data-label]::before {
+        content: attr(data-label);
+        font-weight: 700;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: var(--tt-texto-sec);
+        text-align: left;
+        margin-right: auto;
+        flex-shrink: 0;
+    }
+
+    .tt-tabla-responsive td.tt-sin-datos {
+        display: flex;
+        justify-content: center;
+        text-align: center;
+        border-top: none;
+    }
+
+    .tt-tabla-responsive td.tt-acciones {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
+/* ---------- firewall ---------- */
+
+.tt-firewall-pre {
+    background: var(--tt-navy);
+    color: #d6e4f0;
+    padding: 1rem;
+    border-radius: var(--tt-radio);
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    font-family: ui-monospace, Consolas, Menlo, monospace;
+}
+
+.tt-fw-tabla {
+    color: #ffd166;
+    font-weight: 700;
+}
+
+.tt-fw-cadena {
+    color: #13a8d8;
+    font-weight: 700;
+}
+
+.tt-fw-accept {
+    color: #7bd88f;
+}
+
+.tt-fw-drop {
+    color: #ff8787;
+}
+
+.tt-fw-normal {
+    color: #d6e4f0;
+}
+
+.tt-resumen-firewall {
+    color: var(--tt-texto-sec);
+}
+
+/* --- cabecera de sección y plantillas de ejemplo --- */
+
+.tt-fw-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.9rem;
+}
+
+.tt-fw-cabecera-acciones {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.tt-fw-ejemplos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+}
+
+.tt-fw-ejemplo {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    padding: 0.8rem 1rem;
+    background: var(--tt-superficie);
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio);
+    box-shadow: var(--tt-sombra);
+    color: var(--tt-texto);
+    text-decoration: none;
+}
+
+.tt-fw-ejemplo:hover {
+    border-color: var(--tt-cian);
+    background: var(--tt-info-bg);
+    color: var(--tt-texto);
+}
+
+.tt-fw-ejemplo i {
+    color: var(--tt-cian);
+    font-size: 1.15rem;
+    line-height: 1.4;
+}
+
+.tt-fw-ejemplo strong {
+    display: block;
+    font-size: 0.92rem;
+}
+
+.tt-fw-ejemplo small {
+    display: block;
+    color: var(--tt-texto-sec);
+    font-size: 0.8rem;
+}
+
+/* --- tabla de reglas --- */
+
+.tt-fw-regla-inactiva td {
+    color: var(--tt-texto-sec);
+}
+
+.tt-fw-nombre {
+    font-weight: 600;
+}
+
+.tt-fw-comentario {
+    display: block;
+    color: var(--tt-texto-sec);
+    font-size: 0.78rem;
+    font-weight: 400;
+}
+
+.tt-fw-servicio {
+    background: var(--tt-superficie-2);
+    border: 1px solid var(--tt-borde);
+    border-radius: 6px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.82rem;
+    color: var(--tt-texto);
+    white-space: nowrap;
+}
+
+.tt-fw-accion {
+    display: inline-block;
+    padding: 0.15rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.tt-fw-accion-bloquear {
+    background: var(--tt-error-bg);
+    color: var(--tt-error);
+}
+
+.tt-fw-accion-rechazar {
+    background: var(--tt-advertencia-bg);
+    color: var(--tt-advertencia-texto);
+}
+
+.tt-fw-accion-permitir {
+    background: var(--tt-ok-bg);
+    color: var(--tt-ok-texto);
+}
+
+.tt-fw-si {
+    color: var(--tt-ok-texto);
+    font-size: 1rem;
+}
+
+.tt-fw-no {
+    color: var(--tt-texto-sec);
+}
+
+.tt-fw-hits {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+/* --- interruptor «Activa»: formularios nativos POST, sin JS --- */
+
+.tt-fw-interruptor-form {
+    display: block;
+    margin: 0;
+}
+
+.tt-fw-interruptor {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 44px;
+    height: 24px;
+    padding: 2px;
+    border: 1px solid var(--tt-borde);
+    border-radius: 999px;
+    background: var(--tt-neutro-bg);
+    cursor: pointer;
+}
+
+.tt-fw-interruptor-pastilla {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--tt-neutro);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.tt-fw-interruptor-off .tt-fw-interruptor-pastilla {
+    background: var(--tt-neutro);
+}
+
+.tt-fw-interruptor-on {
+    background: var(--tt-ok-bg);
+    border-color: var(--tt-ok);
+}
+
+.tt-fw-interruptor-on .tt-fw-interruptor-pastilla {
+    background: var(--tt-ok);
+    transform: translateX(20px);
+}
+
+.tt-fw-interruptor-lectura {
+    cursor: default;
+}
+
+/* --- botones de fila (subir/bajar/editar/borrar) --- */
+
+.tt-fw-botones-fila {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.tt-fw-form-borrar {
+    margin: 0;
+}
+
+/* --- formularios de regla y de grupo --- */
+
+.tt-fw-migas {
+    margin-bottom: 1rem;
+}
+
+.tt-fw-migas a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--tt-azul);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.tt-fw-migas a:hover {
+    text-decoration: underline;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-fw-migas a {
+        color: var(--tt-cian);
+    }
+}
+
+.tt-fw-form {
+    margin: 0;
+}
+
+.tt-fw-form-fila {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.9rem 1.2rem;
+    margin-bottom: 1.1rem;
+    align-items: start;
+}
+
+.tt-fw-campo {
+    min-width: 0;
+}
+
+.tt-fw-campo-estrecho {
+    max-width: 18rem;
+}
+
+.tt-fw-campo-ancho {
+    grid-column: 1 / -1;
+}
+
+.tt-fw-form-grupo {
+    min-width: 0;
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio);
+    padding: 1rem;
+    margin-bottom: 1.2rem;
+}
+
+.tt-fw-form-legend {
+    width: 100%;
+    padding: 0;
+    margin-bottom: 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--tt-texto-sec);
+}
+
+.tt-fw-ayuda {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--tt-texto-sec);
+}
+
+.tt-fw-form-acciones {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+}
+
+.tt-fw-selector-dispositivos {
+    max-width: 100%;
+}
+
+/* --- grupos: miembros --- */
+
+.tt-fw-miembros-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.35rem 1.2rem;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 0.3rem;
+    margin-bottom: 0.9rem;
+    border: 1px dashed var(--tt-borde);
+    border-radius: var(--tt-radio-sm);
+}
+
+.tt-fw-miembro-datos {
+    color: var(--tt-texto-sec);
+    font-size: 0.78rem;
+}
+
+.tt-fw-miembros {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.tt-fw-miembros li {
+    background: var(--tt-superficie-2);
+    border: 1px solid var(--tt-borde);
+    border-radius: 6px;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.8rem;
+}
+
+.tt-fw-miembros-texto {
+    font-family: ui-monospace, Consolas, Menlo, monospace;
+    font-size: 0.85rem;
+}
+
+/* --- firewall en móvil (390 px): una columna y botones a la derecha --- */
+
+@media (max-width: 575.98px) {
+    .tt-fw-cabecera {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tt-fw-cabecera-acciones .btn {
+        flex: 1 1 auto;
+    }
+
+    .tt-fw-ejemplos {
+        grid-template-columns: 1fr;
+    }
+
+    .tt-fw-form-fila {
+        grid-template-columns: 1fr;
+    }
+
+    .tt-fw-campo-estrecho {
+        max-width: none;
+    }
+
+    .tt-fw-botones-fila {
+        justify-content: flex-end;
+    }
+}
+
+/* ---------- errores ---------- */
+
+.tt-error-pagina {
+    text-align: center;
+    padding: 3.5rem 1rem;
+    color: var(--tt-navy);
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-error-pagina {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-error-pagina i {
+    font-size: 3.2rem;
+    color: var(--tt-cian);
+}
+
+.tt-error-pagina h2 {
+    margin: 0.8rem 0 0.4rem;
+}
+
+.tt-error-pagina p {
+    color: var(--tt-texto-sec);
+    margin-bottom: 1.3rem;
+}
+
+/* ---------- responsive general ---------- */
+
+@media (max-width: 575.98px) {
+    .tt-main {
+        padding: 1rem 0.8rem;
+    }
+
+    .tt-topbar {
+        padding: 0.8rem 1rem;
+    }
+
+    .tt-titulo-pagina {
+        font-size: 1.1rem;
+    }
+
+    .tt-tarjetas-resumen, .tt-grid-wan, .tt-tarjetas-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------- utilidades compartidas: buscador + chips de filtro rápido ---------- */
+
+.tt-mono {
+    font-family: ui-monospace, Consolas, Menlo, monospace;
+}
+
+.tt-buscador {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 220px;
+    flex: 1;
+    max-width: 380px;
+    margin: 0;
+}
+
+.tt-buscador i {
+    position: absolute;
+    left: 0.85rem;
+    color: var(--tt-texto-sec);
+    pointer-events: none;
+}
+
+.tt-buscador input {
+    padding-left: 2.3rem;
+}
+
+.tt-filtros {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.1rem;
+}
+
+.tt-filtro-chip {
+    border: 1px solid var(--tt-borde);
+    background: var(--tt-superficie);
+    color: var(--tt-texto-sec);
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.tt-filtro-chip:hover {
+    background: var(--tt-superficie-2);
+}
+
+.tt-filtro-chip.activo {
+    background: var(--tt-cian);
+    color: var(--tt-navy);
+    border-color: var(--tt-cian);
+}
+
+/* ---------- dispositivos: cabecera, lista compacta y modales ---------- */
+
+.tt-dispositivos-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.tt-dispositivos-contadores {
+    display: flex;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+    font-size: 0.88rem;
+    color: var(--tt-texto-sec);
+}
+
+.tt-contador {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tt-contador strong {
+    color: var(--tt-navy);
+    font-size: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-contador strong {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-dispositivos-lista {
+    background: var(--tt-superficie);
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio);
+    box-shadow: var(--tt-sombra);
+    overflow: hidden;
+}
+
+.tt-dispositivo-fila {
+    display: grid;
+    grid-template-columns: 2.4rem minmax(140px, 1.3fr) minmax(170px, 1.2fr) minmax(120px, 0.9fr) 110px 2.4rem;
+    align-items: center;
+    gap: 0.9rem;
+    min-height: 48px;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--tt-borde);
+}
+
+.tt-dispositivo-fila:last-child {
+    border-bottom: none;
+}
+
+.tt-dispositivo-fila:hover {
+    background: var(--tt-superficie-2);
+}
+
+.tt-dispositivo-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    background: var(--tt-info-bg);
+    color: var(--tt-azul);
+    font-size: 1.05rem;
+    flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-dispositivo-icono {
+        color: var(--tt-cian);
+    }
+}
+
+.tt-dispositivo-id {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tt-dispositivo-nombre {
+    color: var(--tt-navy);
+    font-size: 0.93rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-dispositivo-nombre {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-dispositivo-etiqueta {
+    color: var(--tt-texto-sec);
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tt-dispositivo-red {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    font-size: 0.8rem;
+    color: var(--tt-texto-sec);
+    gap: 0.1rem;
+}
+
+.tt-dispositivo-mac {
+    font-size: 0.74rem;
+    opacity: 0.85;
+}
+
+.tt-dispositivo-estado {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.tt-dispositivo-reserva {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.tt-dispositivo-acciones {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.tt-dispositivo-menu {
+    width: 2.2rem;
+    height: 2.2rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tt-modal-dispositivo {
+    font-weight: 700;
+    color: var(--tt-navy);
+    margin-bottom: 0.9rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-modal-dispositivo {
+        color: var(--tt-texto);
+    }
+}
+
+.modal-content {
+    background: var(--tt-superficie);
+    color: var(--tt-texto);
+    border-radius: var(--tt-radio);
+    border: 1px solid var(--tt-borde);
+}
+
+.modal-header, .modal-footer {
+    border-color: var(--tt-borde);
+}
+
+/* Tarjeta compacta en móvil: la fila se reorganiza en una rejilla con
+   áreas en vez de seguir siendo una única línea horizontal. */
+@media (max-width: 767.98px) {
+    .tt-dispositivo-fila {
+        grid-template-columns: 2.4rem 1fr auto;
+        grid-template-areas:
+            "icono id       reserva"
+            "icono red      red"
+            "icono estado   acciones";
+        row-gap: 0.3rem;
+        padding: 0.75rem 0.9rem;
+    }
+
+    .tt-dispositivo-icono { grid-area: icono; align-self: start; }
+    .tt-dispositivo-id { grid-area: id; }
+    .tt-dispositivo-reserva { grid-area: reserva; justify-content: flex-end; }
+    .tt-dispositivo-red { grid-area: red; flex-direction: row; flex-wrap: wrap; gap: 0.7rem; }
+    .tt-dispositivo-estado { grid-area: estado; }
+    .tt-dispositivo-acciones { grid-area: acciones; align-self: center; }
+}
+
+/* ---------- WAN: control segmentado del modo ---------- */
+
+.tt-modo-form {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.9rem;
+}
+
+.tt-segmentado {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.3rem;
+    margin: 0;
+    border: 1px solid var(--tt-borde);
+    background: var(--tt-superficie-2);
+    border-radius: 999px;
+}
+
+.tt-segmentado-input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+}
+
+.tt-segmentado-opcion {
+    padding: 0.5rem 1.2rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--tt-texto-sec);
+    cursor: pointer;
+    margin: 0;
+}
+
+.tt-segmentado-input:checked + .tt-segmentado-opcion {
+    background: var(--tt-cian);
+    color: var(--tt-navy);
+}
+
+.tt-segmentado-input:focus-visible + .tt-segmentado-opcion {
+    outline: 3px solid var(--tt-cian);
+    outline-offset: 2px;
+}
+
+.tt-segmentado-input:disabled + .tt-segmentado-opcion {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.tt-modo-explicacion {
+    color: var(--tt-texto-sec);
+    font-size: 0.85rem;
+    margin: 0;
+    max-width: 60ch;
+}
+
+.tt-divisor-modo {
+    width: 100%;
+    border: none;
+    border-top: 1px solid var(--tt-borde);
+    margin: 1.1rem 0;
+}
+
+/* ---------- WAN: tarjetas de detalle por línea ---------- */
+
+.tt-grid-wan-detalle {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 1.2rem;
+}
+
+@media (min-width: 992px) {
+    .tt-grid-wan-detalle {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.tt-tarjeta-wan-detalle {
+    background: var(--tt-superficie);
+}
+
+.tt-wan-cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 0.8rem;
+}
+
+.tt-wan-identidad {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.tt-wan-identidad .tt-card-titulo {
+    margin-bottom: 0;
+}
+
+.tt-wan-telefono {
+    color: var(--tt-texto-sec);
+    font-size: 0.85rem;
+}
+
+.tt-wan-identidad .tt-id-corto {
+    font-size: 0.75rem;
+    color: var(--tt-texto-sec);
+    max-width: 220px;
+}
+
+.tt-wan-seccion-titulo {
+    color: var(--tt-texto-sec);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0.9rem 0 0.4rem;
+}
+
+.tt-wan-seccion-titulo:first-of-type {
+    margin-top: 0;
+}
+
+.tt-wan-datos {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem 1rem;
+    margin: 0;
+}
+
+.tt-wan-fila {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+    border-bottom: 1px dashed var(--tt-borde);
+    padding-bottom: 0.3rem;
+}
+
+.tt-wan-fila dt {
+    color: var(--tt-texto-sec);
+    font-weight: 600;
+}
+
+.tt-wan-fila dd {
+    margin: 0;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tt-wan-calidad {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    flex-wrap: wrap;
+}
+
+.tt-wan-separador {
+    color: var(--tt-texto-sec);
+}
+
+.tt-wan-trafico {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.tt-wan-acumulado {
+    color: var(--tt-texto-sec);
+    font-size: 0.8rem;
+}
+
+.tt-wan-balanceo {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+}
+
+.tt-wan-balanceo .tt-barra-peso {
+    flex-basis: 100%;
+    margin-top: 0.1rem;
+}
+
+.tt-wan-pesos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-basis: 100%;
+}
+
+.tt-peso-destacado {
+    font-weight: 700;
+    color: var(--tt-texto);
+    font-size: 0.9rem;
+}
+
+.tt-peso-secundario {
+    color: var(--tt-texto-sec);
+    font-size: 0.75rem;
+}
+
+.tt-nota-pesos {
+    color: var(--tt-texto-sec);
+    font-size: 0.78rem;
+    margin: 0.35rem 0 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+}
+
+/* Texto normal (no flex): si se pone display:flex en un <p>, cada nodo de
+   texto suelto entre el icono, el <strong> y el <a> se convierte en su
+   propio "item" de flexbox sin wrap, así que en móvil la frase se corta en
+   columnas en vez de fluir como un párrafo normal. */
+.tt-wan-cambio {
+    color: var(--tt-texto-sec);
+    font-size: 0.8rem;
+    margin: 0.8rem 0 0;
+}
+
+.tt-wan-cambio-icono {
+    margin-right: 0.35rem;
+}
+
+.tt-wan-editar-boton {
+    margin-top: 0.9rem;
+}
+
+.tt-wan-editar {
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--tt-borde);
+}
+
+@media (max-width: 575.98px) {
+    .tt-wan-datos {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------- Wi-Fi: señal, redes guardadas y confirmación de borrado ---------- */
+
+.tt-wan-calidad .tt-barra-senal {
+    flex: 1 1 auto;
+    max-width: 220px;
+}
+
+.tt-wifi-eliminar {
+    display: inline-block;
+}
+
+.tt-wifi-eliminar summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.tt-wifi-eliminar summary::-webkit-details-marker,
+.tt-wifi-eliminar summary::marker {
+    display: none;
+    content: "";
+}
+
+.tt-wifi-eliminar[open] summary {
+    margin-bottom: 0.5rem;
+}
+
+.tt-wifi-eliminar-confirmar {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    max-width: 320px;
+    padding: 0.7rem;
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio-sm);
+    background: var(--tt-superficie-2);
+}
+
+.tt-wifi-eliminar-confirmar p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--tt-texto-sec);
+}
+
+/* ---------- Wi-Fi: filas compactas (mismo lenguaje que .tt-dispositivo-fila) ---------- */
+
+.tt-wifi-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.tt-wifi-cabecera-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.tt-wifi-cabecera-texto .tt-subtitulo {
+    margin: 0;
+}
+
+.tt-wifi-cabecera-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+}
+
+.tt-wifi-radio-control {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.tt-wifi-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--tt-superficie);
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio);
+    box-shadow: var(--tt-sombra);
+    overflow: hidden;
+}
+
+.tt-wifi-fila {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-height: 44px;
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid var(--tt-borde);
+}
+
+.tt-wifi-fila:last-child {
+    border-bottom: none;
+}
+
+.tt-wifi-fila:hover {
+    background: var(--tt-superficie-2);
+}
+
+.tt-wifi-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    background: var(--tt-info-bg);
+    color: var(--tt-azul);
+    font-size: 1.05rem;
+    flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-wifi-icono {
+        color: var(--tt-cian);
+    }
+}
+
+.tt-wifi-id {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.tt-wifi-nombre {
+    color: var(--tt-navy);
+    font-weight: 600;
+    font-size: 0.93rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-wifi-nombre {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-wifi-detalle {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--tt-texto-sec);
+    font-size: 0.78rem;
+}
+
+.tt-wifi-acciones {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+/* Atenuada con color, no con opacity: opacity también reduce el contraste
+   de la etiqueta "bloqueada" por debajo de AA. El nombre y el detalle se
+   apagan a --tt-texto-sec (ya pensado para contraste AA sobre
+   --tt-superficie); la etiqueta conserva el color de su propio badge. */
+.tt-wifi-fila-bloqueada .tt-wifi-nombre,
+.tt-wifi-fila-bloqueada .tt-wifi-detalle {
+    color: var(--tt-texto-sec);
+}
+
+.tt-wifi-fila-bloqueada .tt-wifi-icono {
+    color: var(--tt-texto-sec);
+    background: var(--tt-superficie-2);
+}
+
+@media (max-width: 480px) {
+    .tt-wifi-fila {
+        padding: 0.55rem 0.8rem;
+        gap: 0.6rem;
+    }
+
+    .tt-wifi-icono {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.95rem;
+    }
+}
+
+/* ---------- registro: línea de tiempo compacta agrupada por día ---------- */
+
+.tt-registro-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.3rem;
+}
+
+.tt-registro-grupo {
+    margin-bottom: 1.4rem;
+}
+
+.tt-registro-dia {
+    position: sticky;
+    top: 4.2rem;
+    z-index: 5;
+    background: var(--tt-fondo);
+    color: var(--tt-navy);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.4rem 0;
+    margin: 0 0 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-registro-dia {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-registro-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--tt-superficie);
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio);
+    box-shadow: var(--tt-sombra);
+    overflow: hidden;
+}
+
+.tt-registro-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--tt-borde);
+}
+
+.tt-registro-item:last-child {
+    border-bottom: none;
+}
+
+.tt-registro-item:hover {
+    background: var(--tt-superficie-2);
+}
+
+.tt-registro-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--tt-info-bg);
+    color: var(--tt-azul);
+    font-size: 1rem;
+    margin-top: 0.1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-registro-icono {
+        color: var(--tt-cian);
+    }
+}
+
+.tt-registro-icono-error {
+    background: var(--tt-error-bg);
+    color: var(--tt-error);
+}
+
+.tt-registro-cuerpo {
+    flex: 1;
+    min-width: 0;
+}
+
+.tt-registro-linea-1 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.tt-registro-accion {
+    font-weight: 700;
+    color: var(--tt-navy);
+    font-family: ui-monospace, Consolas, Menlo, monospace;
+    font-size: 0.85rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-registro-accion {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-registro-mensaje {
+    margin: 0.2rem 0 0;
+    color: var(--tt-texto-sec);
+    font-size: 0.88rem;
+}
+
+.tt-registro-datos {
+    margin-top: 0.35rem;
+}
+
+.tt-registro-datos summary {
+    cursor: pointer;
+    color: var(--tt-azul);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-registro-datos summary {
+        color: var(--tt-cian);
+    }
+}
+
+.tt-registro-datos code {
+    display: block;
+    margin-top: 0.4rem;
+    padding: 0.6rem 0.8rem;
+    background: var(--tt-superficie-2);
+    border-radius: var(--tt-radio-sm);
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--tt-texto);
+}
+
+.tt-registro-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+    font-size: 0.78rem;
+    color: var(--tt-texto-sec);
+    flex-shrink: 0;
+    text-align: right;
+    white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+    .tt-registro-dia {
+        top: 3.6rem;
+    }
+
+    .tt-registro-item {
+        flex-wrap: wrap;
+    }
+
+    .tt-registro-meta {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.7rem;
+        margin-left: calc(2.1rem + 0.9rem);
+        white-space: normal;
+    }
+}
+
+/* ---------- Protección (bloqueo DNS): catálogo de listas y resultado ---------- */
+
+.tt-proteccion-catalogo {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--tt-superficie);
+    border: 1px solid var(--tt-borde);
+    border-radius: var(--tt-radio);
+    box-shadow: var(--tt-sombra);
+    overflow: hidden;
+}
+
+.tt-proteccion-fila {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--tt-borde);
+}
+
+.tt-proteccion-fila:last-child {
+    border-bottom: none;
+}
+
+.tt-proteccion-fila:hover {
+    background: var(--tt-superficie-2);
+}
+
+.tt-proteccion-check {
+    margin-top: 0.25rem;
+    flex-shrink: 0;
+}
+
+.tt-proteccion-id {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 0.15rem;
+}
+
+.tt-proteccion-nombre {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--tt-navy);
+    font-weight: 600;
+    font-size: 0.93rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-proteccion-nombre {
+        color: var(--tt-texto);
+    }
+}
+
+.tt-proteccion-descripcion {
+    color: var(--tt-texto-sec);
+    font-size: 0.8rem;
+}
+
+.tt-proteccion-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.8rem;
+    align-items: center;
+    margin-top: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--tt-texto-sec);
+}
+
+@media (max-width: 480px) {
+    .tt-proteccion-fila {
+        padding: 0.6rem 0.8rem;
+    }
+}
+
+.tt-proteccion-resultado {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    padding: 0.9rem 1rem;
+    border-radius: var(--tt-radio);
+    border: 1px solid var(--tt-borde);
+    background: var(--tt-superficie-2);
+    margin-top: 0.9rem;
+}
+
+.tt-proteccion-resultado i {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    color: var(--tt-neutro);
+}
+
+.tt-proteccion-resultado.tt-proteccion-resultado-bloqueado {
+    border-color: var(--tt-error);
+    background: var(--tt-error-bg);
+}
+
+.tt-proteccion-resultado.tt-proteccion-resultado-bloqueado i {
+    color: var(--tt-error);
+}
+
+.tt-proteccion-resultado.tt-proteccion-resultado-permitido {
+    border-color: var(--tt-ok);
+    background: var(--tt-ok-bg);
+}
+
+.tt-proteccion-resultado.tt-proteccion-resultado-permitido i {
+    color: var(--tt-ok);
+}
+
+.tt-proteccion-resultado.tt-proteccion-resultado-pendiente {
+    border-color: var(--tt-advertencia);
+    background: var(--tt-advertencia-bg);
+}
+
+.tt-proteccion-resultado.tt-proteccion-resultado-pendiente i {
+    color: var(--tt-advertencia);
+}
+
+.tt-proteccion-resultado-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.tt-proteccion-resultado-dominio {
+    font-weight: 700;
+    color: var(--tt-navy);
+    word-break: break-all;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-proteccion-resultado-dominio {
+        color: var(--tt-texto);
+    }
+}
+
+/* ---------- Estadísticas (dashboard): selector de rango + gráficos ---------- */
+
+.tt-segmentado-mini {
+    padding: 0.2rem;
+    gap: 0.15rem;
+}
+
+.tt-segmentado-mini .tt-segmentado-opcion {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.78rem;
+}
+
+#tt-estadisticas .tt-seccion-cabecera {
+    margin-bottom: 1rem;
+}
+
+.tt-estad-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+}
+
+@media (min-width: 992px) {
+    .tt-estad-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.tt-estad-tarjeta {
+    background: var(--tt-superficie);
+    min-width: 0;
+}
+
+.tt-estad-tarjeta-ancha {
+    grid-column: 1 / -1;
+}
+
+.tt-estad-tarjeta-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.9rem;
+}
+
+.tt-estad-tarjeta-cabecera .tt-card-titulo {
+    margin-bottom: 0;
+}
+
+.tt-estad-grafico-wrap {
+    position: relative;
+    height: 240px;
+}
+
+.tt-estad-grafico-wrap-alto {
+    height: 300px;
+}
+
+.tt-estad-grafico-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.tt-estad-vacio {
+    padding: 1.2rem 1rem;
+}
+
+@media (max-width: 575.98px) {
+    .tt-estad-grafico-wrap {
+        height: 220px;
+    }
+
+    .tt-estad-grafico-wrap-alto {
+        height: 260px;
+    }
+}
+
+/* fieldset sin borde propio: visualmente igual que antes de convertirlo en
+   fieldset/legend para accesibilidad (grupo de radios con nombre). */
+.tt-segmentado {
+    border: none;
+}
+
+.tt-estad-cabecera-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+    color: var(--tt-texto-sec);
+}
+
+.tt-estad-actualizado {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.tt-estad-sin-conexion {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.9rem;
+    font-size: 0.82rem;
+    color: var(--tt-advertencia);
+    font-weight: 600;
+}
+
+.tt-estad-nota {
+    margin: 0 0 1rem;
+    font-size: 0.82rem;
+    color: var(--tt-texto-sec);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+}
+
+.tt-estad-nota i {
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+}
+
+/* Nota corta dentro de una tarjeta de gráfico (p. ej. "conexiones: sólo
+   disponibles en las últimas 48h"), no es un estado vacío de toda la
+   tarjeta, así que va más compacta que `.tt-sin-datos`. */
+.tt-estad-nota-tarjeta {
+    font-size: 0.78rem;
+    color: var(--tt-texto-sec);
+    margin: 0.5rem 0 0;
+}
+
+/* Datos accesibles por detrás de cada gráfico: una tabla normal, oculta por
+   defecto (comportamiento nativo de <details>), con el mismo lenguaje visual
+   que el resto de tablas del panel. */
+.tt-estad-detalle {
+    margin-top: 0.7rem;
+}
+
+.tt-estad-detalle summary {
+    cursor: pointer;
+    color: var(--tt-azul);
+    font-size: 0.8rem;
+    font-weight: 600;
+    list-style: none;
+}
+
+.tt-estad-detalle summary::-webkit-details-marker {
+    display: none;
+}
+
+.tt-estad-detalle summary::before {
+    content: "▸ ";
+}
+
+.tt-estad-detalle[open] summary::before {
+    content: "▾ ";
+}
+
+@media (prefers-color-scheme: dark) {
+    .tt-estad-detalle summary {
+        color: var(--tt-cian);
+    }
+}
+
+.tt-estad-tabla-wrap {
+    margin-top: 0.5rem;
+    max-height: 220px;
+    overflow: auto;
+}
+
+.tt-estad-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.tt-estad-tabla th,
+.tt-estad-tabla td {
+    text-align: left;
+    padding: 0.3rem 0.6rem;
+    border-bottom: 1px solid var(--tt-borde);
+    color: var(--tt-texto);
+}
+
+.tt-estad-tabla th {
+    color: var(--tt-texto-sec);
+    font-weight: 700;
+    position: sticky;
+    top: 0;
+    background: var(--tt-superficie);
+}

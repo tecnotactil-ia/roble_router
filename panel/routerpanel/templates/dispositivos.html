@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block titulo %}Dispositivos{% endblock %}
+{% block titulo_pagina %}Dispositivos{% endblock %}
+{% block contenido %}
+
+{% set es_admin = session.get('rol') == 'admin' %}
+
+{% if error_leases %}
+<div class="alert tt-alerta-error" role="alert">
+    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+    <span>{{ error_leases }}</span>
+</div>
+{% endif %}
+
+<div class="tt-dispositivos-cabecera">
+    <div class="tt-dispositivos-contadores" aria-label="Resumen de dispositivos">
+        <span class="tt-contador"><strong>{{ resumen.total }}</strong> dispositivos</span>
+        <span class="tt-contador tt-contador-ok"><span class="tt-punto-calidad tt-punto-ok" aria-hidden="true"></span> <strong>{{ resumen.conectados }}</strong> conectados</span>
+        <span class="tt-contador"><i class="bi bi-bookmark-check" aria-hidden="true"></i> <strong>{{ resumen.reservados }}</strong> reservados</span>
+    </div>
+    <label class="tt-buscador" for="tt-dispositivos-busqueda">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="search" id="tt-dispositivos-busqueda" class="form-control" placeholder="Buscar por nombre, IP, MAC o etiqueta" autocomplete="off">
+    </label>
+</div>
+
+<div class="tt-filtros" role="group" aria-label="Filtros rápidos de dispositivos">
+    <button type="button" class="tt-filtro-chip activo" data-filtro="todos" aria-pressed="true">Todos</button>
+    <button type="button" class="tt-filtro-chip" data-filtro="conectado" aria-pressed="false">Conectados</button>
+    <button type="button" class="tt-filtro-chip" data-filtro="inactivo" aria-pressed="false">Inactivos</button>
+    <button type="button" class="tt-filtro-chip" data-filtro="reservado" aria-pressed="false">Reservados</button>
+</div>
+
+<div class="tt-dispositivos-lista" id="tt-dispositivos-lista">
+    {% for d in dispositivos %}
+    <div class="tt-dispositivo-fila"
+         data-estado-filtro="{{ d.estado_filtro }}"
+         data-reserva="{{ '1' if d.reserva else '0' }}"
+         data-busqueda="{{ d.busqueda }}">
+        <span class="tt-dispositivo-icono" aria-hidden="true"><i class="bi {{ d.icono }}"></i></span>
+        <div class="tt-dispositivo-id">
+            <strong class="tt-dispositivo-nombre">{{ d.nombre }}</strong>
+            {% if d.etiqueta %}<span class="tt-dispositivo-etiqueta">{{ d.etiqueta }}</span>{% endif %}
+        </div>
+        <div class="tt-dispositivo-red">
+            <span class="tt-mono">{{ d.ip or '—' }}</span>
+            <span class="tt-mono tt-dispositivo-mac">{{ d.mac }}</span>
+        </div>
+        <div class="tt-dispositivo-estado">
+            {% if d.estado == 'Conectado' %}
+            <span class="tt-punto-calidad tt-punto-ok" aria-hidden="true"></span> Conectado
+            {% elif d.estado == 'Lease caducado' %}
+            <span class="tt-punto-calidad tt-punto-advertencia" aria-hidden="true"></span> Lease caducado
+            {% else %}
+            <span class="tt-punto-calidad tt-punto-neutro" aria-hidden="true"></span> Inactivo
+            {% endif %}
+        </div>
+        <div class="tt-dispositivo-reserva">
+            {% if d.reserva %}
+            <span class="badge tt-badge-gris"><i class="bi bi-bookmark-check" aria-hidden="true"></i> Reservado</span>
+            {% endif %}
+        </div>
+        {% if es_admin %}
+        <div class="dropdown tt-dispositivo-acciones">
+            <button class="btn btn-sm tt-btn-secundario tt-dispositivo-menu" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acciones para {{ d.nombre }}">
+                <i class="bi bi-three-dots" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#tt-modal-etiquetar"
+                            data-mac="{{ d.mac }}" data-nombre="{{ d.nombre }}" data-etiqueta="{{ d.etiqueta }}">
+                        <i class="bi bi-tag" aria-hidden="true"></i> Etiquetar
+                    </button>
+                </li>
+                {% if d.reserva %}
+                <li>
+                    <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#tt-modal-quitar-reserva"
+                            data-mac="{{ d.mac }}" data-nombre="{{ d.nombre }}">
+                        <i class="bi bi-dash-circle" aria-hidden="true"></i> Quitar reserva
+                    </button>
+                </li>
+                {% else %}
+                <li>
+                    <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#tt-modal-reservar"
+                            data-mac="{{ d.mac }}" data-ip="{{ d.ip }}" data-nombre="{{ d.nombre }}" data-sugerencia="{{ d.sugerencia_reserva }}">
+                        <i class="bi bi-bookmark-plus" aria-hidden="true"></i> Reservar
+                    </button>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <p class="tt-sin-datos"><i class="bi bi-hdd-network" aria-hidden="true"></i> No hay dispositivos para mostrar.</p>
+    {% endfor %}
+</div>
+
+{% if dispositivos %}
+<p class="tt-sin-datos d-none" id="tt-dispositivos-sin-resultados"><i class="bi bi-search" aria-hidden="true"></i> Ningún dispositivo coincide con la búsqueda o el filtro.</p>
+{% endif %}
+
+{% if es_admin %}
+<div class="modal fade" id="tt-modal-etiquetar" tabindex="-1" aria-labelledby="tt-modal-etiquetar-titulo" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('dispositivos.etiquetar') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mac" id="tt-modal-etiquetar-mac" value="">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="tt-modal-etiquetar-titulo">Etiquetar dispositivo</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="tt-modal-dispositivo" id="tt-modal-etiquetar-nombre"></p>
+                    <label class="form-label" for="tt-modal-etiquetar-etiqueta">Etiqueta</label>
+                    <input type="text" class="form-control" id="tt-modal-etiquetar-etiqueta" name="etiqueta" maxlength="60" placeholder="Sin etiqueta">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn tt-btn-secundario" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn tt-btn-primario"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="tt-modal-reservar" tabindex="-1" aria-labelledby="tt-modal-reservar-titulo" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('dispositivos.reserva_agregar') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mac" id="tt-modal-reservar-mac" value="">
+                <input type="hidden" name="ip" id="tt-modal-reservar-ip" value="">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="tt-modal-reservar-titulo">Reservar IP</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="tt-modal-dispositivo" id="tt-modal-reservar-nombre"></p>
+                    <label class="form-label" for="tt-modal-reservar-nombrecampo">Nombre de la reserva</label>
+                    <input type="text" class="form-control" id="tt-modal-reservar-nombrecampo" name="nombre" pattern="[a-z0-9-]{1,40}" maxlength="40" required>
+                    <div class="form-text">Minúsculas, números y guiones. Se propone a partir del nombre del dispositivo.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn tt-btn-secundario" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn tt-btn-primario"><i class="bi bi-bookmark-plus" aria-hidden="true"></i> Reservar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="tt-modal-quitar-reserva" tabindex="-1" aria-labelledby="tt-modal-quitar-reserva-titulo" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('dispositivos.reserva_eliminar') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="mac" id="tt-modal-quitar-reserva-mac" value="">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="tt-modal-quitar-reserva-titulo">Quitar reserva</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Seguro que quieres quitar la reserva de <strong id="tt-modal-quitar-reserva-nombre"></strong>? El dispositivo podrá recibir otra IP por DHCP.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn tt-btn-secundario" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn tt-btn-peligro"><i class="bi bi-dash-circle" aria-hidden="true"></i> Quitar reserva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dispositivos.js') }}"></script>
+{% endblock %}

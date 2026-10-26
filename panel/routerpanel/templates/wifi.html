@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block titulo %}Wi-Fi{% endblock %}
+{% block titulo_pagina %}Wi-Fi{% endblock %}
+{% block contenido %}
+
+{% set es_admin = session.get('rol') == 'admin' %}
+{% set controles_activos = es_admin and wifi.presente %}
+
+<div class="alert tt-alerta-info">
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
+    <span>Conecta el router al Wi-Fi que comparte un teléfono y úsalo como una línea más.
+    Los dispositivos de casa siguen conectados al router como siempre; el Wi-Fi del
+    teléfono es sólo otra salida a Internet.</span>
+</div>
+
+{% if not wifi.presente %}
+<div class="alert tt-alerta-error" role="alert">
+    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+    <span>No se detecta la tarjeta Wi-Fi.</span>
+</div>
+{% endif %}
+
+{% if wifi_ap.habilitado %}
+<div class="alert tt-alerta-info" role="alert">
+    <i class="bi bi-broadcast" aria-hidden="true"></i>
+    <span>La tarjeta Wi-Fi está en modo punto de acceso (SSID «{{ wifi_ap.ssid if wifi_ap.ssid else '—' }}»): es el AP de la LAN, no una salida a Internet.
+    Para usarla como salida a Internet, reinstala con --wifi-modo wan.</span>
+</div>
+{% endif %}
+
+{% if not (wifi_ap.habilitado) %}
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Estado de la WAN Wi-Fi</h2>
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <form method="post" action="{{ url_for('wifi.config') }}" class="tt-modo-form">
+                {{ form_config.hidden_tag() }}
+                <h3 class="tt-wan-seccion-titulo">Radio Wi-Fi</h3>
+                <div class="tt-wifi-radio-control">
+                    <fieldset class="tt-segmentado"{{ '' if controles_activos else ' disabled' }}>
+                        <legend class="visually-hidden">Radio Wi-Fi</legend>
+                        {% for valor, etiqueta in form_config.habilitada.choices %}
+                        <input type="radio" class="tt-segmentado-input" name="habilitada" id="tt-wifi-habilitada-{{ valor }}" value="{{ valor }}"{{ ' checked' if form_config.habilitada.data == valor else '' }}>
+                        <label class="tt-segmentado-opcion" for="tt-wifi-habilitada-{{ valor }}">{{ etiqueta }}</label>
+                        {% endfor %}
+                    </fieldset>
+                    {% if controles_activos %}
+                    <button class="btn tt-btn-primario" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar</button>
+                    {% endif %}
+                </div>
+            </form>
+
+            <hr class="tt-divisor-modo">
+
+            <dl class="tt-wan-datos">
+                <div class="tt-wan-fila"><dt>Tarjeta</dt><dd>{{ 'Detectada' if wifi.presente else 'No detectada' }}</dd></div>
+                <div class="tt-wan-fila"><dt>Interfaz</dt><dd class="tt-mono">{{ wifi.interfaz or '—' }}</dd></div>
+                <div class="tt-wan-fila"><dt>Radio</dt><dd>{{ 'Encendida' if wifi.radio else ('Apagada' if wifi.radio is not none else '—') }}</dd></div>
+                <div class="tt-wan-fila"><dt>Conectada a</dt><dd>{{ wifi.conectada_a or '—' }}</dd></div>
+            </dl>
+
+            {% if wifi.conectada_a %}
+            <h4 class="tt-wan-seccion-titulo">Señal</h4>
+            <div class="tt-wan-calidad">
+                <div class="tt-barra tt-barra-senal" role="progressbar" aria-label="Intensidad de la señal Wi-Fi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ wifi.senal if wifi.senal is not none else 0 }}">
+                    <span class="tt-barra-relleno" data-pct="{{ wifi.senal if wifi.senal is not none else 0 }}"></span>
+                </div>
+                <span>{{ wifi.senal if wifi.senal is not none else '—' }} %</span>
+            </div>
+            {% endif %}
+
+            {% if wan_asociada %}
+            <p class="tt-wan-cambio"><i class="bi bi-diagram-3 tt-wan-cambio-icono" aria-hidden="true"></i>Esta Wi-Fi también aparece como línea <strong>{{ wan_asociada.nombre or wan_asociada.id }}</strong> en el balanceo.
+                <a href="{{ url_for('wan.index') }}">Ver en WAN</a>.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Redes guardadas</h2>
+    {% if wifi.redes %}
+    <ul class="tt-wifi-lista" role="list">
+        {% for red in wifi.redes|sort(attribute='prioridad', reverse=true) %}
+        <li class="tt-wifi-fila">
+            <span class="tt-wifi-icono" aria-hidden="true"><i class="bi bi-wifi"></i></span>
+            <div class="tt-wifi-id">
+                <strong class="tt-wifi-nombre" title="{{ red.ssid }}">{{ red.ssid }}</strong>
+                <span class="tt-wifi-detalle">
+                    Prioridad {{ red.prioridad }}
+                    {% if wifi.conectada_a == red.ssid %}
+                    <span class="badge tt-badge-ok"><i class="bi bi-wifi" aria-hidden="true"></i> Conectada</span>
+                    {% else %}
+                    <span class="badge tt-badge-gris">Guardada</span>
+                    {% endif %}
+                </span>
+            </div>
+            {% if es_admin %}
+            <div class="tt-wifi-acciones">
+                <form method="post" action="{{ url_for('wifi.conectar') }}" class="tt-form-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="ssid" value="{{ red.ssid }}">
+                    <button class="btn btn-sm tt-btn-secundario" type="submit"{{ '' if controles_activos and wifi.conectada_a != red.ssid else ' disabled' }}>
+                        <i class="bi bi-plug" aria-hidden="true"></i> Conectar
+                    </button>
+                </form>
+                {% if controles_activos %}
+                <details class="tt-wifi-eliminar">
+                    <summary class="btn btn-sm tt-btn-peligro" aria-label="Eliminar «{{ red.ssid }}»"><i class="bi bi-trash" aria-hidden="true"></i></summary>
+                    <form method="post" action="{{ url_for('wifi.eliminar') }}" class="tt-wifi-eliminar-confirmar">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="ssid" value="{{ red.ssid }}">
+                        <p>¿Eliminar la red «{{ red.ssid }}»? Tendrás que volver a añadirla para usarla de nuevo.</p>
+                        <button class="btn btn-sm tt-btn-peligro" type="submit">
+                            <i class="bi bi-trash" aria-hidden="true"></i> Confirmar eliminación
+                        </button>
+                    </form>
+                </details>
+                {% else %}
+                <button class="btn btn-sm tt-btn-peligro" type="button" disabled aria-label="Eliminar «{{ red.ssid }}»"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                {% endif %}
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="tt-sin-datos"><i class="bi bi-wifi-off" aria-hidden="true"></i> No hay redes Wi-Fi guardadas.</p>
+    {% endif %}
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Añadir red</h2>
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <form method="post" action="{{ url_for('wifi.agregar') }}" id="tt-wifi-form-agregar">
+                {{ form_agregar.hidden_tag() }}
+                <div class="tt-campos">
+                    <div class="tt-campo tt-campo-ancho">
+                        <label class="form-label" for="tt-wifi-ssid">SSID</label>
+                        <input class="form-control" type="text" id="tt-wifi-ssid" name="ssid" maxlength="32" value="{{ form_agregar.ssid.data or '' }}"{{ '' if controles_activos else ' disabled' }} required>
+                    </div>
+                    <div class="tt-campo">
+                        <label class="form-label" for="tt-wifi-clave">Clave</label>
+                        <input class="form-control" type="password" id="tt-wifi-clave" name="clave" autocomplete="new-password" maxlength="63"{{ '' if controles_activos else ' disabled' }}>
+                        <p class="tt-nota-pesos"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                        Déjala vacía para una red abierta: es insegura, cualquiera puede ver tu tráfico.</p>
+                    </div>
+                    <div class="tt-campo">
+                        <label class="form-label" for="tt-wifi-prioridad">Prioridad (0-100)</label>
+                        <input class="form-control" type="number" min="0" max="100" id="tt-wifi-prioridad" name="prioridad" value="{{ form_agregar.prioridad.data if form_agregar.prioridad.data is not none else 50 }}"{{ '' if controles_activos else ' disabled' }}>
+                    </div>
+                </div>
+                {% if es_admin %}
+                <button class="btn tt-btn-primario" type="submit"{{ '' if controles_activos else ' disabled' }}>
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Añadir red
+                </button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="tt-seccion" id="tt-wifi-cercanas" data-wifi-escaneo-pendiente="{{ '1' if escaneo_pendiente else '0' }}">
+    {% set total_cercanas = wifi.escaneo|length %}
+    <div class="tt-wifi-cabecera">
+        <div class="tt-wifi-cabecera-texto">
+            <h2 class="tt-subtitulo">Redes cercanas</h2>
+            <div class="tt-wifi-cabecera-meta">
+                <span class="tt-contador"><strong>{{ total_cercanas }}</strong> {{ 'red' if total_cercanas == 1 else 'redes' }}</span>
+                {% if escaneo_pendiente %}
+                <span class="tt-topbar-sub"><i class="bi bi-hourglass-split" aria-hidden="true"></i> Buscando redes… esta página se actualizará sola en unos segundos.</span>
+                {% else %}
+                <span class="tt-topbar-sub"><i class="bi bi-clock-history" aria-hidden="true"></i> Último escaneo: {{ escaneo_relativo }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {% if es_admin %}
+        <form method="post" action="{{ url_for('wifi.escanear') }}">
+            {{ form_escanear.hidden_tag() }}
+            <button class="btn btn-sm tt-btn-outline-primario" type="submit"{{ '' if controles_activos else ' disabled' }}>
+                <i class="bi bi-search" aria-hidden="true"></i> Buscar redes
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% if wifi.escaneo %}
+    <ul class="tt-wifi-lista" role="list">
+        {% for red in wifi.escaneo %}
+        {% set nivel_senal = 'bi-wifi' if red.senal > 75 else ('bi-wifi-2' if red.senal > 50 else ('bi-wifi-1' if red.senal > 25 else 'bi-wifi-off')) %}
+        <li class="tt-wifi-fila{{ ' tt-wifi-fila-bloqueada' if red.bloqueada else '' }}">
+            <span class="tt-wifi-icono" aria-hidden="true"><i class="bi {{ nivel_senal }}"></i></span>
+            <div class="tt-wifi-id">
+                <strong class="tt-wifi-nombre" title="{{ red.ssid }}">{{ red.ssid }}</strong>
+                <span class="tt-wifi-detalle">
+                    <i class="bi {{ 'bi-lock' if red.seguridad else 'bi-unlock' }}" aria-hidden="true"></i>
+                    {{ red.seguridad if red.seguridad else 'abierta' }}
+                    {% if red.canal %}· canal {{ red.canal }}{% endif %}
+                    · {{ red.senal }} %
+                </span>
+            </div>
+            <div class="tt-wifi-acciones">
+                {% if red.bloqueada %}
+                <span class="badge tt-badge-gris">Wi-Fi de casa · bloqueada</span>
+                {% elif es_admin %}
+                <a class="btn btn-sm tt-btn-outline-primario" href="{{ url_for('wifi.index', ssid=red.ssid) }}#tt-wifi-ssid">
+                    <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> Usar
+                </a>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="tt-sin-datos"><i class="bi bi-wifi-off" aria-hidden="true"></i> No hay redes cercanas detectadas todavía.</p>
+    {% endif %}
+</section>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/wifi.js') }}"></script>
+{% endblock %}

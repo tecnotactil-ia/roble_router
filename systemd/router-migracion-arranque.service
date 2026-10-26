@@ -1,0 +1,17 @@
+[Unit]
+Description=Router de casa: si hubo un reinicio con una migración sin confirmar, deshace (N2)
+After=NetworkManager.service routerd.service
+Wants=routerd.service
+
+[Service]
+Type=oneshot
+# N2: router_migrar.py --al-arrancar sólo actúa si existe el marcador
+# /etc/router/migracion-pendiente (migración en curso cuando la máquina se
+# reinició): en ese caso deshace, sin depender de que el proceso de
+# router-migracion.service de antes del reinicio siguiera vivo. Si no hay
+# marcador, no hace nada y sale con éxito.
+ExecStart=/usr/bin/python3 /usr/local/lib/router/router_migrar.py --al-arrancar
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target

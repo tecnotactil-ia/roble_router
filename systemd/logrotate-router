@@ -1,0 +1,15 @@
+# Router de casa — logrotate para /var/log/router/operaciones.log (M7).
+# Instalar como /etc/logrotate.d/router.
+#
+# copytruncate porque routerd tiene el fichero abierto en modo append todo
+# el tiempo (no reabre por señal): sin copytruncate se quedaría escribiendo
+# en el inodo rotado y /var/log/router/operaciones.log se quedaría vacío
+# para siempre.
+/var/log/router/operaciones.log {
+    weekly
+    rotate 8
+    compress
+    copytruncate
+    missingok
+    notifempty
+}

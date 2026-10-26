@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}Iniciar sesión{% endblock %}
+{% block contenido_publico %}
+<div class="tt-login-wrap">
+    <div class="card tt-login-card">
+        <div class="card-body">
+            <div class="tt-login-marca">
+                <span class="tt-login-marca-icono"><i class="bi bi-router" aria-hidden="true"></i></span>
+                <h1>Router casa</h1>
+            </div>
+            <p class="tt-login-sub">Panel de administración · Roble Router</p>
+            <form method="post" action="{{ url_for('auth.login', next=siguiente) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                    <label class="form-label" for="usuario">Usuario</label>
+                    <input class="form-control" type="text" id="usuario" name="usuario" autocomplete="username" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="password">Contraseña</label>
+                    <input class="form-control" type="password" id="password" name="password" autocomplete="current-password" required>
+                </div>
+                <button class="btn tt-btn-primario w-100" type="submit"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Entrar</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

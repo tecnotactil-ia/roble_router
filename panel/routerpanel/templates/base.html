@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>{% block titulo %}Panel del router{% endblock %} · Roble Router</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/panel.css') }}">
+    <script src="{{ url_for('static', filename='js/tt-js.js') }}"></script>
+</head>
+<body class="tt-body">
+{% if session.get('usuario') %}
+<div class="tt-app">
+    <nav class="offcanvas-lg offcanvas-start tt-sidebar" tabindex="-1" id="tt-offcanvas" aria-labelledby="tt-offcanvas-label">
+        <div class="offcanvas-header tt-sidebar-cabecera">
+            <div class="tt-marca" id="tt-offcanvas-label">
+                <span class="tt-marca-icono"><i class="bi bi-router" aria-hidden="true"></i></span>
+                <span class="tt-marca-texto">Roble Router <small>panel</small></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" aria-label="Cerrar menú"></button>
+        </div>
+        <div class="offcanvas-body tt-sidebar-cuerpo">
+            <ul class="tt-nav" aria-label="Navegación principal">
+                <li>
+                    <a class="tt-nav-link {{ 'activo' if request.endpoint == 'dashboard.index' }}" href="{{ url_for('dashboard.index') }}">
+                        <i class="bi bi-speedometer2" aria-hidden="true"></i> <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="tt-nav-link {{ 'activo' if request.endpoint == 'wan.index' }}" href="{{ url_for('wan.index') }}">
+                        <i class="bi bi-diagram-3" aria-hidden="true"></i> <span>WAN</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="tt-nav-link {{ 'activo' if request.endpoint == 'wifi.index' }}" href="{{ url_for('wifi.index') }}">
+                        <i class="bi bi-wifi" aria-hidden="true"></i> <span>Wi-Fi</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="tt-nav-link {{ 'activo' if request.endpoint == 'dispositivos.index' }}" href="{{ url_for('dispositivos.index') }}">
+                        <i class="bi bi-hdd-network" aria-hidden="true"></i> <span>Dispositivos</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="tt-nav-link {{ 'activo' if request.endpoint == 'firewall.index' }}" href="{{ url_for('firewall.index') }}">
+                        <i class="bi bi-shield-lock" aria-hidden="true"></i> <span>Firewall</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="tt-nav-link {{ 'activo' if request.endpoint == 'proteccion.index' }}" href="{{ url_for('proteccion.index') }}">
+                        <i class="bi bi-shield-check" aria-hidden="true"></i> <span>Protección</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="tt-nav-link {{ 'activo' if request.endpoint == 'configuracion.index' }}" href="{{ url_for('configuracion.index') }}">
+                        <i class="bi bi-gear" aria-hidden="true"></i> <span>Configuración</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="tt-nav-link {{ 'activo' if request.endpoint == 'registro.index' }}" href="{{ url_for('registro.index') }}">
+                        <i class="bi bi-journal-text" aria-hidden="true"></i> <span>Registro</span>
+                    </a>
+                </li>
+            </ul>
+            <div class="tt-sidebar-usuario">
+                <div class="tt-usuario-info">
+                    <i class="bi bi-person-circle" aria-hidden="true"></i>
+                    <span class="tt-usuario-texto">{{ session.get('usuario') }} <small class="tt-rol">({{ session.get('rol') }})</small></span>
+                </div>
+                <a class="tt-nav-link {{ 'activo' if request.endpoint == 'cuenta.index' }}" href="{{ url_for('cuenta.index') }}">
+                    <i class="bi bi-person-gear" aria-hidden="true"></i> <span>Mi cuenta</span>
+                </a>
+                <form method="post" action="{{ url_for('auth.logout') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn tt-btn-salir">
+                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Salir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="tt-contenido">
+        <header class="tt-topbar">
+            <button type="button" class="tt-boton-menu d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#tt-offcanvas" aria-controls="tt-offcanvas" aria-label="Abrir menú">
+                <i class="bi bi-list" aria-hidden="true"></i>
+            </button>
+            <div class="tt-topbar-titulo">
+                <h1 class="tt-titulo-pagina">{% block titulo_pagina %}{% endblock %}</h1>
+                {% block topbar_extra %}{% endblock %}
+            </div>
+            <div class="tt-topbar-insignias">
+                {% if fase_global == 'preparacion' %}
+                <span class="badge tt-badge-fase tt-badge-fase-preparacion"><i class="bi bi-cone-striped" aria-hidden="true"></i> Preparación</span>
+                {% elif fase_global == 'produccion' %}
+                <span class="badge tt-badge-fase tt-badge-fase-produccion"><i class="bi bi-check-circle" aria-hidden="true"></i> Producción</span>
+                {% endif %}
+            </div>
+        </header>
+
+        {% include "_mensajes.html" %}
+        <main class="tt-main" id="tt-main" tabindex="-1">
+            {% block contenido %}{% endblock %}
+        </main>
+    </div>
+</div>
+{% else %}
+{% include "_mensajes.html" %}
+<main class="tt-main-sin-sesion" id="tt-main" tabindex="-1">
+    {% block contenido_publico %}{% endblock %}
+</main>
+{% endif %}
+
+<script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/panel.js') }}"></script>
+<script src="{{ url_for('static', filename='js/avisos.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

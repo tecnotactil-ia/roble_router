@@ -1,0 +1,22 @@
+[Unit]
+Description=Router de casa: comprobación horaria de tamaño del log de consultas DNS (BAJA9)
+# logrotate normal (cron.daily) sólo comprueba el "maxsize" de
+# /etc/logrotate.d/router-dns una vez al día — con mucho tráfico DNS el
+# fichero podría crecer bastante más de 200 MiB entre una comprobación y la
+# siguiente. Esta unidad SÓLO relanza logrotate con más frecuencia; no
+# sustituye a cron.daily (sigue haciendo la rotación "daily" normal).
+
+[Service]
+Type=oneshot
+# BAJA6: fichero de estado PROPIO (-s), distinto del `/var/lib/logrotate/
+# status` que usa el cron.daily del sistema — si esta unidad horaria y el
+# cron.daily compartieran el mismo fichero de estado, logrotate podría
+# confundirse sobre cuándo rotó de verdad cada uno (o pelearse por el
+# lock del fichero si coincidieran en el tiempo). Con un estado propio,
+# esta unidad sólo decide por el "maxsize" de router-dns, nunca interfiere
+# con la rotación "daily" normal del resto de /etc/logrotate.d/*.
+ExecStart=/usr/sbin/logrotate -s /var/lib/logrotate/router-dns.status /etc/logrotate.d/router-dns
+# Nunca debe fallar el disparo si logrotate no encuentra nada que rotar
+# (fichero ausente, por debajo del tamaño…) — logrotate ya devuelve 0 en
+# ese caso con normalidad; no hace falta "-" ni ignorar el código de salida.
+StateDirectory=logrotate

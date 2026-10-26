@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar regla' if es_edicion else 'Nueva regla' }} · Firewall{% endblock %}
+{% block titulo_pagina %}{{ 'Editar regla' if es_edicion else 'Nueva regla' }}{% endblock %}
+{% block contenido %}
+
+{% set es_admin = session.get('rol') == 'admin' %}
+
+{% if ejemplo_info %}
+<div class="alert tt-alerta-info" role="status">
+    <i class="bi bi-magic" aria-hidden="true"></i>
+    <span>Plantilla de ejemplo «{{ ejemplo_info.titulo }}»: {{ ejemplo_info.descripcion }}
+    Revisa los datos y pulsa «Guardar regla» cuando esté listo.</span>
+</div>
+{% endif %}
+
+{% if not fw_disponible %}
+<div class="alert tt-alerta-warning" role="alert">
+    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+    <span>El router todavía no ha enviado su configuración de firewall; recarga en unos segundos
+    antes de guardar.</span>
+</div>
+{% endif %}
+
+<nav aria-label="Migas de pan" class="tt-fw-migas">
+    <a href="{{ url_for('firewall.index') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a las reglas</a>
+</nav>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">{{ 'Datos de la regla' if es_edicion else 'Nueva regla' }}</h2>
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <form method="post" action="{{ url_for('firewall.regla_guardar') }}" class="tt-fw-form">
+                {{ form.hidden_tag() }}
+
+                <div class="tt-fw-form-fila">
+                    <div class="tt-fw-campo">
+                        <label class="form-label" for="tt-fw-nombre">Nombre</label>
+                        {{ form.nombre(class_="form-control", id="tt-fw-nombre", placeholder="Por ejemplo: Sin juegos de noche") }}
+                    </div>
+                    <div class="tt-fw-campo tt-fw-campo-estrecho">
+                        <label class="form-label" for="tt-fw-habilitada">Estado</label>
+                        <div class="form-check form-switch">
+                            {{ form.habilitada(class_="form-check-input", id="tt-fw-habilitada", role="switch") }}
+                            <label class="form-check-label" for="tt-fw-habilitada">Activada</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tt-fw-form-fila">
+                    <div class="tt-fw-campo">
+                        <label class="form-label" for="tt-fw-accion">Acción</label>
+                        {{ form.accion(class_="form-select", id="tt-fw-accion") }}
+                        <small class="tt-fw-ayuda">Bloquear descarta el tráfico; rechazar lo avisa de inmediato;
+                        permitir lo deja pasar aunque una regla posterior lo bloquearía.</small>
+                    </div>
+                    <div class="tt-fw-campo">
+                        <label class="form-label" for="tt-fw-protocolo">Protocolo</label>
+                        {{ form.protocolo(class_="form-select", id="tt-fw-protocolo") }}
+                    </div>
+                    <div class="tt-fw-campo">
+                        <label class="form-label" for="tt-fw-puertos">Puertos</label>
+                        {{ form.puertos(class_="form-control", id="tt-fw-puertos", placeholder="443 o 80, 8000-8100") }}
+                        <small class="tt-fw-ayuda">Sólo con TCP, UDP o TCP/UDP. Vacío = todos los puertos.</small>
+                    </div>
+                </div>
+
+                <fieldset class="tt-fw-form-grupo">
+                    <legend class="tt-fw-form-legend">Origen</legend>
+                    <div class="tt-fw-form-fila">
+                        <div class="tt-fw-campo">
+                            <label class="form-label" for="tt-fw-origen-tipo">Tipo de origen</label>
+                            {{ form.origen_tipo(class_="form-select", id="tt-fw-origen-tipo") }}
+                        </div>
+                        <div class="tt-fw-campo">
+                            <label class="form-label" for="tt-fw-origen-valor">Valor</label>
+                            {{ form.origen_valor(class_="form-control", id="tt-fw-origen-valor", placeholder="MAC, IP o red CIDR") }}
+                        </div>
+                        <div class="tt-fw-campo">
+                            <label class="form-label" for="tt-fw-origen-dispositivo">Dispositivo</label>
+                            <select class="form-select tt-fw-selector-dispositivos" id="tt-fw-origen-dispositivo"
+                                    name="origen_dispositivo">
+                                <option value="">— Elegir de la lista —</option>
+                                {% for d in dispositivos %}
+                                <option value="{{ d.mac }}">{{ d.nombre }} ({{ d.mac }}{% if d.ip %}, {{ d.ip }}{% endif %})</option>
+                                {% endfor %}
+                            </select>
+                            <small class="tt-fw-ayuda">Si eliges un dispositivo, su MAC se usa como origen.</small>
+                        </div>
+                        <div class="tt-fw-campo">
+                            <label class="form-label" for="tt-fw-origen-grupo">Grupo</label>
+                            <select class="form-select" id="tt-fw-origen-grupo" name="origen_grupo">
+                                <option value="">— Ninguno —</option>
+                                {% for g in grupos %}
+                                <option value="{{ g.id }}">{{ g.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="tt-fw-form-grupo">
+                    <legend class="tt-fw-form-legend">Destino</legend>
+                    <div class="tt-fw-form-fila">
+                        <div class="tt-fw-campo">
+                            <label class="form-label" for="tt-fw-destino-tipo">Tipo de destino</label>
+                            {{ form.destino_tipo(class_="form-select", id="tt-fw-destino-tipo") }}
+                        </div>
+                        <div class="tt-fw-campo">
+                            <label class="form-label" for="tt-fw-destino-valor">Valor</label>
+                            {{ form.destino_valor(class_="form-control", id="tt-fw-destino-valor", placeholder="IP o red CIDR") }}
+                        </div>
+                        <div class="tt-fw-campo">
+                            <label class="form-label" for="tt-fw-destino-grupo">Grupo</label>
+                            <select class="form-select" id="tt-fw-destino-grupo" name="destino_grupo">
+                                <option value="">— Ninguno —</option>
+                                {% for g in grupos if g.tipo == 'ip' %}
+                                <option value="{{ g.id }}">{{ g.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div class="tt-fw-form-fila">
+                    <div class="tt-fw-campo tt-fw-campo-ancho">
+                        <label class="form-label" for="tt-fw-comentario">Comentario</label>
+                        {{ form.comentario(class_="form-control", id="tt-fw-comentario", placeholder="Para qué sirve esta regla (opcional)") }}
+                    </div>
+                    <div class="tt-fw-campo tt-fw-campo-estrecho">
+                        <div class="form-check">
+                            {{ form.registrar(class_="form-check-input", id="tt-fw-registrar") }}
+                            <label class="form-check-label" for="tt-fw-registrar">Registrar</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tt-fw-form-acciones">
+                    <button class="btn tt-btn-primario" type="submit">
+                        <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar regla
+                    </button>
+                    <a class="btn tt-btn-outline-primario" href="{{ url_for('firewall.index') }}">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+{% if ejemplos %}
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Otras plantillas de ejemplo</h2>
+    <div class="tt-fw-ejemplos" role="group" aria-label="Plantillas de ejemplo">
+        {% for clave, ejemplo in ejemplos.items() %}
+        <a class="tt-fw-ejemplo" href="{{ url_for('firewall.regla_nueva', ejemplo=clave) }}">
+            <i class="bi bi-magic" aria-hidden="true"></i>
+            <span>
+                <strong>{{ ejemplo.titulo }}</strong>
+                <small>{{ ejemplo.descripcion }}</small>
+            </span>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Router de casa: comprobación horaria del tamaño de /var/log/router/dns.log
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

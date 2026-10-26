@@ -1,0 +1,48 @@
+[Unit]
+Description=Router de casa: núcleo multi-WAN (routerd)
+Documentation=file:///usr/local/share/doc/roble_router/README.md
+After=NetworkManager.service network-online.target
+Wants=network-online.target
+
+[Service]
+# M7: Type=notify + WatchdogSec — routerd llama a sd_notify() (implementación
+# mínima propia, sin python-systemd) con READY=1 tras el primer ciclo y
+# WATCHDOG=1 en cada ciclo; si el bucle se cuelga de verdad (no una excepción
+# de un ciclo raro, que ya se captura sola), systemd lo nota y reinicia.
+Type=notify
+ExecStart=/usr/bin/python3 /usr/local/lib/router/routerd.py --config /etc/router/router.json
+Restart=always
+RestartSec=3
+WatchdogSec=60
+# /run/router (estado para el panel) y /var/log/router (operaciones)
+RuntimeDirectory=router
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+LogsDirectory=router
+LogsDirectoryMode=0755
+# Endurecimiento (M7): routerd es root (necesita nft/ip/sysctl), pero no hay
+# motivo para que tenga privilegios NUEVOS ni para que vea el resto del
+# sistema de escritura — sólo sus propios directorios de datos.
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/etc/router /etc/dnsmasq.d /var/lib/router /var/log/router /run/router
+# bloqueo.registro_dns_dias → /etc/logrotate.d/router-dns (asegurar_logrotate_dns):
+# daily + rotate dinámico para el log de consultas DNS del bloqueador.
+ReadWritePaths=/etc/logrotate.d
+# BAJA7: bloqueo.actualizar_h → drop-in de router-bloqueo.timer
+# (_asegurar_timer_bloqueo). El directorio .timer.d debe existir YA en la
+# instalación (`install -d /etc/systemd/system/router-bloqueo.timer.d`) —
+# el "-" sólo evita que FALTE ese directorio impida arrancar el servicio.
+ReadWritePaths=-/etc/systemd/system/router-bloqueo.timer.d
+# WAN Wi-Fi: perfiles propios WAN-wifi-* escritos en
+# /etc/NetworkManager/system-connections (ver generar_keyfile_wifi en
+# routerd.py). Sin esto, ProtectSystem=full deja /etc de sólo lectura y
+# wifi_agregar/wifi_eliminar fallarían con EROFS. El "-" delante ignora la
+# ruta si no existiera (instalación sin NetworkManager): nunca debe impedir
+# que arranque el servicio.
+ReadWritePaths=-/etc/NetworkManager/system-connections
+
+[Install]
+WantedBy=multi-user.target

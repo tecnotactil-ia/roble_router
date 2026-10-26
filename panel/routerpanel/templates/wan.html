@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block titulo %}WAN{% endblock %}
+{% block titulo_pagina %}Líneas WAN{% endblock %}
+{% block contenido %}
+
+{% set es_admin = session.get('rol') == 'admin' %}
+
+<div class="alert tt-alerta-info" role="alert">
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
+    <span>El balanceo reparte <strong>conexiones</strong> entre las líneas disponibles; no suma la velocidad
+    de una sola descarga entre varias WAN (eso requeriría «bonding» con un servidor remoto).</span>
+</div>
+
+{% if not est.disponible %}
+<div class="alert tt-alerta-error" role="alert">
+    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+    <span>{{ est.error }}</span>
+</div>
+{% endif %}
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Balanceo y reparto de pesos</h2>
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <form method="post" action="{{ url_for('wan.modo') }}" class="tt-modo-form">
+                {{ form_modo.hidden_tag() }}
+                <h3 class="tt-wan-seccion-titulo">Modo de funcionamiento</h3>
+                <fieldset class="tt-segmentado"{{ ' disabled' if not es_admin else '' }}>
+                    <legend class="visually-hidden">Modo de funcionamiento</legend>
+                    {% for valor, etiqueta in form_modo.modo.choices %}
+                    <input type="radio" class="tt-segmentado-input" name="modo" id="tt-modo-{{ valor }}" value="{{ valor }}"{{ ' checked' if form_modo.modo.data == valor else '' }}>
+                    <label class="tt-segmentado-opcion" for="tt-modo-{{ valor }}">{{ etiqueta }}</label>
+                    {% endfor %}
+                </fieldset>
+                <p class="tt-modo-explicacion">
+                    <strong>Balanceo:</strong> reparte las conexiones nuevas entre todas las líneas habilitadas según su peso.
+                    <strong>Respaldo:</strong> usa sólo la línea de mayor prioridad y cambia a otra únicamente si falla.
+                </p>
+                {% if es_admin %}
+                <button class="btn tt-btn-primario" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar modo</button>
+                {% endif %}
+            </form>
+
+            <hr class="tt-divisor-modo">
+
+            <form method="post" action="{{ url_for('wan.modo_pesos') }}" class="tt-modo-form">
+                {{ form_modo_pesos.hidden_tag() }}
+                <h3 class="tt-wan-seccion-titulo">Reparto de pesos</h3>
+                <fieldset class="tt-segmentado"{{ ' disabled' if not es_admin else '' }}>
+                    <legend class="visually-hidden">Reparto de pesos</legend>
+                    {% for valor, etiqueta in form_modo_pesos.modo_pesos.choices %}
+                    <input type="radio" class="tt-segmentado-input" name="modo_pesos" id="tt-modo-pesos-{{ valor }}" value="{{ valor }}"{{ ' checked' if form_modo_pesos.modo_pesos.data == valor else '' }}>
+                    <label class="tt-segmentado-opcion" for="tt-modo-pesos-{{ valor }}">{{ etiqueta }}</label>
+                    {% endfor %}
+                </fieldset>
+                <p class="tt-modo-explicacion">
+                    <strong>Automático:</strong> el router ajusta el reparto de cada línea según la latencia y la pérdida reales que mide.
+                    <strong>Manual:</strong> usa los pesos que pongas en cada línea.
+                    En ambos casos, el tráfico UDP en tiempo real (llamadas, juegos) sale siempre por la línea de menor latencia.
+                </p>
+                {% if es_admin %}
+                <button class="btn tt-btn-primario" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar reparto</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Detalle de líneas</h2>
+    {% if wans %}
+    <div class="tt-grid-wan-detalle">
+        {% for w in wans %}
+        {% set calidad = 'neutro' if w.latencia_ms is none else ('ok' if w.latencia_ms < 80 else ('advertencia' if w.latencia_ms < 200 else 'error')) %}
+        <article class="card tt-tarjeta-wan-detalle">
+            <div class="card-body">
+                <div class="tt-wan-cabecera">
+                    <div class="tt-wan-identidad">
+                        <h3 class="tt-card-titulo"><i class="bi bi-diagram-3" aria-hidden="true"></i> {{ w.nombre or w.id }}</h3>
+                        <span class="tt-wan-telefono">{{ w.telefono or 'Sin teléfono asociado' }}</span>
+                        <span class="tt-id-corto tt-mono" title="{{ w.id }}">ID {{ w.id }}</span>
+                    </div>
+                    {% if not w.presente %}
+                    <span class="badge tt-badge-gris"><i class="bi bi-plug" aria-hidden="true"></i> Desconectado</span>
+                    {% elif w.internet %}
+                    <span class="badge tt-badge-ok"><i class="bi bi-wifi" aria-hidden="true"></i> Internet</span>
+                    {% else %}
+                    <span class="badge tt-badge-error"><i class="bi bi-wifi-off" aria-hidden="true"></i> Sin Internet</span>
+                    {% endif %}
+                </div>
+
+                <h4 class="tt-wan-seccion-titulo">Conexión</h4>
+                <dl class="tt-wan-datos">
+                    <div class="tt-wan-fila"><dt>Interfaz</dt><dd class="tt-mono">{{ w.interfaz }}</dd></div>
+                    <div class="tt-wan-fila"><dt>IP</dt><dd class="tt-mono">{{ w.ip or '—' }}</dd></div>
+                    <div class="tt-wan-fila"><dt>Gateway</dt><dd class="tt-mono">{{ w.gateway or '—' }}</dd></div>
+                    <div class="tt-wan-fila"><dt>Tethering</dt><dd>{{ 'Sí' if w.tethering else 'No' }}</dd></div>
+                </dl>
+
+                <h4 class="tt-wan-seccion-titulo">Calidad</h4>
+                <div class="tt-wan-calidad">
+                    <span class="tt-punto-calidad tt-punto-{{ calidad }}" aria-hidden="true"></span>
+                    <span>Latencia: {{ w.latencia_ms if w.latencia_ms is not none else '—' }} ms</span>
+                    <span class="tt-wan-separador" aria-hidden="true">·</span>
+                    <span>Pérdida: {{ w.perdida_pct if w.perdida_pct is not none else '—' }} %</span>
+                </div>
+
+                <h4 class="tt-wan-seccion-titulo">Tráfico</h4>
+                <div class="tt-wan-trafico">
+                    <span class="tt-medidor"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i> {{ w.rx_bps_fmt }} <span class="tt-wan-acumulado">· {{ w.rx_bytes_fmt }} acum.</span></span>
+                    <span class="tt-medidor"><i class="bi bi-arrow-up-circle" aria-hidden="true"></i> {{ w.tx_bps_fmt }} <span class="tt-wan-acumulado">· {{ w.tx_bytes_fmt }} acum.</span></span>
+                </div>
+
+                <h4 class="tt-wan-seccion-titulo">Balanceo</h4>
+                <div class="tt-wan-balanceo">
+                    <span class="badge {{ 'tt-badge-ok' if w.habilitada else 'tt-badge-gris' }}">{{ 'Habilitada' if w.habilitada else 'Deshabilitada' }}</span>
+                    {% if est.fase == 'preparacion' %}
+                    <span class="tt-linea-balanceo">En balanceo: No (preparación)</span>
+                    {% elif w.en_balanceo %}
+                    <span class="tt-linea-balanceo">En balanceo: Sí · prioridad {{ w.prioridad }}</span>
+                    {% set peso_manual = w.get('peso') %}
+                    {% set peso_auto = w.get('peso_efectivo') %}
+                    <div class="tt-wan-pesos">
+                        {% if modo_pesos == 'manual' %}
+                        <span class="tt-peso-destacado">Peso manual: {{ peso_manual if peso_manual is not none else '—' }}</span>
+                        <span class="tt-peso-secundario">Peso automático: {{ peso_auto if peso_auto is not none else '—' }}</span>
+                        {% else %}
+                        <span class="tt-peso-destacado">Peso automático: {{ peso_auto if peso_auto is not none else '—' }}</span>
+                        <span class="tt-peso-secundario">Peso manual: {{ peso_manual if peso_manual is not none else '—' }}</span>
+                        {% endif %}
+                    </div>
+                    {% if w.pct_reparto is not none %}
+                    <div class="tt-barra tt-barra-peso" role="progressbar" aria-label="Reparto previsto de tráfico de {{ w.nombre or w.id }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ w.pct_reparto|round|int }}">
+                        <span class="tt-barra-relleno tt-barra-peso-relleno" data-pct="{{ w.pct_reparto }}"></span>
+                    </div>
+                    <span class="tt-linea-peso-valor" title="Cuota de conexiones nuevas según los pesos">Reparto previsto: {{ w.pct_reparto|round(1) }} %</span>
+                    {% else %}
+                    <span class="tt-linea-peso-valor" title="Cuota de conexiones nuevas según los pesos">Reparto previsto: —</span>
+                    {% endif %}
+                    {% else %}
+                    <span class="tt-linea-balanceo">En balanceo: No · prioridad {{ w.prioridad }}</span>
+                    {% endif %}
+                </div>
+
+                <p class="tt-wan-cambio"><i class="bi bi-clock-history" aria-hidden="true"></i> Último cambio: {{ w.ultimo_cambio or '—' }}</p>
+
+                {% if es_admin %}
+                <button class="btn btn-sm tt-btn-secundario tt-wan-editar-boton" type="button" data-bs-toggle="collapse" data-bs-target="#tt-wan-editar-{{ loop.index }}" aria-expanded="false" aria-controls="tt-wan-editar-{{ loop.index }}">
+                    <i class="bi bi-pencil" aria-hidden="true"></i> Editar
+                </button>
+                <div class="collapse tt-wan-editar" id="tt-wan-editar-{{ loop.index }}">
+                    <form method="post" action="{{ url_for('wan.actualizar') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="wan" value="{{ w.id }}">
+                        <div class="tt-campos">
+                            <div class="tt-campo tt-campo-ancho">
+                                <label class="form-label" for="nombre-{{ w.id }}">Nombre</label>
+                                <input class="form-control" type="text" id="nombre-{{ w.id }}" name="nombre" value="{{ w.nombre }}" maxlength="32">
+                            </div>
+                            <div class="tt-campo form-check tt-campo-ancho">
+                                <input class="form-check-input" type="checkbox" name="habilitada" value="y" id="habilitada-{{ w.id }}"{{ ' checked' if w.habilitada else '' }}>
+                                <label class="form-check-label" for="habilitada-{{ w.id }}">Habilitada</label>
+                            </div>
+                            <div class="tt-campo tt-campo-ancho">
+                                <label class="form-label" for="peso-{{ w.id }}">Peso (1-100)</label>
+                                <input class="form-control" type="number" min="1" max="100" id="peso-{{ w.id }}" name="peso" value="{{ w.peso }}">
+                                {% if modo_pesos == 'auto' %}
+                                <p class="tt-nota-pesos"><i class="bi bi-info-circle" aria-hidden="true"></i> El peso manual sólo se aplica cuando el reparto está en modo Manual.</p>
+                                {% endif %}
+                            </div>
+                            <div class="tt-campo">
+                                <label class="form-label" for="prioridad-{{ w.id }}">Prioridad (1-9)</label>
+                                <input class="form-control" type="number" min="1" max="9" id="prioridad-{{ w.id }}" name="prioridad" value="{{ w.prioridad }}">
+                            </div>
+                        </div>
+                        <button class="btn tt-btn-primario" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="tt-sin-datos"><i class="bi bi-inboxes" aria-hidden="true"></i> No hay WAN configuradas o no hay datos disponibles.</p>
+    {% endif %}
+</section>
+
+{% endblock %}

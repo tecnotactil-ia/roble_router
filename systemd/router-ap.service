@@ -1,0 +1,12 @@
+[Unit]
+Description=Roble Router: punto de acceso Wi-Fi (hostapd en el puente de la LAN)
+After=NetworkManager.service
+ConditionPathExists=/etc/router/hostapd.conf
+[Service]
+Type=simple
+ExecStartPre=/bin/sh -c 'for i in $$(seq 60); do [ -d /sys/class/net/br-lan ] && exit 0; sleep 1; done; echo "br-lan no aparece" >&2; exit 1'
+ExecStart=/usr/sbin/hostapd /etc/router/hostapd.conf
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

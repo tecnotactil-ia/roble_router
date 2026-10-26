@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% block titulo %}Dashboard{% endblock %}
+{% block titulo_pagina %}Dashboard{% endblock %}
+
+{% block topbar_extra %}
+<p class="tt-topbar-sub">
+    <i class="bi bi-clock-history" aria-hidden="true"></i>
+    Datos de hace <span id="tt-antiguedad">{{ datos.antiguedad_s if datos.antiguedad_s is not none else '—' }}</span> s
+</p>
+{% endblock %}
+
+{% block contenido %}
+
+<div id="tt-aviso-caido" class="alert tt-alerta-warning {{ '' if datos.caido else 'd-none' }}" role="alert">
+    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+    <span>
+    {% if not datos.disponible %}
+        {{ datos.error or 'No hay datos del router todavía.' }}
+    {% else %}
+        El demonio routerd parece caído: los datos tienen más de 30 segundos de antigüedad.
+    {% endif %}
+    </span>
+</div>
+
+{% if datos.fase == 'preparacion' %}
+<div class="alert tt-alerta-info" role="alert">
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
+    <span>Router en preparación: DHCP, cortafuegos, NAT y balanceo todavía no están activos; sólo se monitorizan las líneas.</span>
+</div>
+{% endif %}
+
+{% set color_internet = 'ok' if datos.internet else ('error' if datos.internet is sameas false else 'neutro') %}
+<section class="tt-tarjetas-resumen" aria-label="Resumen del estado del router">
+    <div class="tt-kpi">
+        <div class="tt-kpi-cabecera">
+            <div class="tt-kpi-icono tt-kpi-icono-{{ color_internet }}" id="tt-icono-internet"><i class="bi bi-globe2" aria-hidden="true"></i></div>
+            <div class="tt-kpi-texto">
+                <span class="tt-kpi-valor" id="tt-estado-internet">
+                    {% if datos.internet %}Internet: Sí{% elif datos.internet is sameas false %}Internet: No{% else %}Internet: ?{% endif %}
+                </span>
+                <span class="tt-kpi-etiqueta">Conectividad</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tt-kpi">
+        <div class="tt-kpi-cabecera">
+            <div class="tt-kpi-icono"><i class="bi bi-clock-history" aria-hidden="true"></i></div>
+            <div class="tt-kpi-texto">
+                <span class="tt-kpi-valor" id="tt-uptime">{{ datos.uptime_fmt }}</span>
+                <span class="tt-kpi-etiqueta">Uptime del router</span>
+            </div>
+        </div>
+    </div>
+
+    {% set nivel_cpu = 'neutro' if datos.sistema.cpu_pct is none else ('error' if datos.sistema.cpu_pct >= 90 else ('advertencia' if datos.sistema.cpu_pct >= 70 else 'ok')) %}
+    <div class="tt-kpi">
+        <div class="tt-kpi-cabecera">
+            <div class="tt-kpi-icono"><i class="bi bi-cpu" aria-hidden="true"></i></div>
+            <div class="tt-kpi-texto">
+                <span class="tt-kpi-valor" id="tt-cpu">{{ datos.sistema.cpu_pct if datos.sistema.cpu_pct is not none else '—' }} %</span>
+                <span class="tt-kpi-etiqueta">CPU (panel)</span>
+            </div>
+        </div>
+        <div class="tt-barra" role="progressbar" aria-label="Uso de CPU" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ datos.sistema.cpu_pct or 0 }}">
+            <span class="tt-barra-relleno tt-barra-{{ nivel_cpu }}" id="tt-cpu-barra" data-pct="{{ datos.sistema.cpu_pct if datos.sistema.cpu_pct is not none else 0 }}"></span>
+        </div>
+    </div>
+
+    {% set nivel_mem = 'neutro' if datos.sistema.memoria_pct is none else ('error' if datos.sistema.memoria_pct >= 90 else ('advertencia' if datos.sistema.memoria_pct >= 70 else 'ok')) %}
+    <div class="tt-kpi">
+        <div class="tt-kpi-cabecera">
+            <div class="tt-kpi-icono"><i class="bi bi-memory" aria-hidden="true"></i></div>
+            <div class="tt-kpi-texto">
+                <span class="tt-kpi-valor" id="tt-mem">{{ datos.sistema.memoria_pct if datos.sistema.memoria_pct is not none else '—' }} %</span>
+                <span class="tt-kpi-etiqueta">Memoria (panel)</span>
+            </div>
+        </div>
+        <div class="tt-barra" role="progressbar" aria-label="Uso de memoria" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ datos.sistema.memoria_pct or 0 }}">
+            <span class="tt-barra-relleno tt-barra-{{ nivel_mem }}" id="tt-mem-barra" data-pct="{{ datos.sistema.memoria_pct if datos.sistema.memoria_pct is not none else 0 }}"></span>
+        </div>
+    </div>
+
+    {% set nivel_disco = 'neutro' if datos.sistema.disco_pct is none else ('error' if datos.sistema.disco_pct >= 90 else ('advertencia' if datos.sistema.disco_pct >= 70 else 'ok')) %}
+    <div class="tt-kpi">
+        <div class="tt-kpi-cabecera">
+            <div class="tt-kpi-icono"><i class="bi bi-hdd" aria-hidden="true"></i></div>
+            <div class="tt-kpi-texto">
+                <span class="tt-kpi-valor" id="tt-disco">{{ datos.sistema.disco_pct if datos.sistema.disco_pct is not none else '—' }} %</span>
+                <span class="tt-kpi-etiqueta">Disco (panel)</span>
+            </div>
+        </div>
+        <div class="tt-barra" role="progressbar" aria-label="Uso de disco" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ datos.sistema.disco_pct or 0 }}">
+            <span class="tt-barra-relleno tt-barra-{{ nivel_disco }}" id="tt-disco-barra" data-pct="{{ datos.sistema.disco_pct if datos.sistema.disco_pct is not none else 0 }}"></span>
+        </div>
+    </div>
+
+    <div class="tt-kpi">
+        <div class="tt-kpi-cabecera">
+            <div class="tt-kpi-icono"><i class="bi bi-hdd-network" aria-hidden="true"></i></div>
+            <div class="tt-kpi-texto">
+                <span class="tt-kpi-valor" id="tt-n-dispositivos">{{ datos.n_dispositivos }}</span>
+                <span class="tt-kpi-etiqueta">Dispositivos conectados</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% if datos.wifi_ap.habilitado %}
+<section class="tt-seccion" id="tt-wifi-ap">
+    <div class="tt-seccion-cabecera">
+        <h2 class="tt-subtitulo">Wi-Fi (punto de acceso)</h2>
+    </div>
+    <div class="tt-grid-wan">
+        <article class="card tt-tarjeta-linea" id="tt-ap-tarjeta">
+            <div class="card-body">
+                <div class="tt-linea-cabecera">
+                    <div class="tt-linea-nombre">
+                        <strong id="tt-ap-ssid">{{ datos.wifi_ap.ssid or '—' }}</strong>
+                        <span class="tt-linea-telefono">Punto de acceso de la LAN</span>
+                    </div>
+                    {% if datos.wifi_ap.activo %}
+                    <span class="badge tt-badge-ok"><i class="bi bi-broadcast" aria-hidden="true"></i> Activo</span>
+                    {% else %}
+                    <span class="badge tt-badge-gris"><i class="bi bi-power" aria-hidden="true"></i> Apagado</span>
+                    {% endif %}
+                </div>
+                <div class="tt-linea-medidores">
+                    <span class="tt-medidor"><i class="bi bi-wifi" aria-hidden="true"></i> Interfaz {{ datos.wifi_ap.interfaz or '—' }}</span>
+                </div>
+                <p class="tt-linea-secundario">Clientes Wi-Fi conectados: <strong id="tt-ap-clientes">{{ datos.wifi_ap.clientes if datos.wifi_ap.clientes is not none else '—' }}</strong></p>
+                <p class="tt-linea-secundario">La tarjeta Wi-Fi sirve la LAN en 2,4 GHz; se enciende al activar el router (router-migrar).</p>
+            </div>
+        </article>
+    </div>
+</section>
+{% endif %}
+
+<section class="tt-seccion">
+    <div class="tt-seccion-cabecera">
+        <h2 class="tt-subtitulo">Líneas WAN</h2>
+    </div>
+    <div class="tt-grid-wan" id="tt-wans">
+        {% for w in datos.wans %}
+        {% set clase_color = 'tt-linea-' ~ ((loop.index0 % 6) + 1) %}
+        {% set calidad = 'neutro' if w.latencia_ms is none else ('ok' if w.latencia_ms < 80 else ('advertencia' if w.latencia_ms < 200 else 'error')) %}
+        <article class="card tt-tarjeta-linea {{ clase_color }}">
+            <div class="card-body">
+                <div class="tt-linea-cabecera">
+                    <div class="tt-linea-nombre">
+                        <strong>{{ w.nombre or w.id }}</strong>
+                        <span class="tt-linea-telefono">{{ w.telefono or '—' }}</span>
+                    </div>
+                    {% if not w.presente %}
+                        <span class="badge tt-badge-gris"><i class="bi bi-plug" aria-hidden="true"></i> Desconectado</span>
+                    {% elif w.internet %}
+                        <span class="badge tt-badge-ok"><i class="bi bi-wifi" aria-hidden="true"></i> Internet</span>
+                    {% else %}
+                        <span class="badge tt-badge-error"><i class="bi bi-wifi-off" aria-hidden="true"></i> Sin Internet</span>
+                    {% endif %}
+                </div>
+
+                <div class="tt-linea-latencia">
+                    <span class="tt-punto-calidad tt-punto-{{ calidad }}" aria-hidden="true"></span>
+                    <span>Latencia: {{ w.latencia_ms if w.latencia_ms is not none else '—' }} ms</span>
+                </div>
+
+                <div class="tt-linea-medidores">
+                    <span class="tt-medidor"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i> {{ w.rx_bps_fmt }}</span>
+                    <span class="tt-medidor"><i class="bi bi-arrow-up-circle" aria-hidden="true"></i> {{ w.tx_bps_fmt }}</span>
+                </div>
+
+                <p class="tt-linea-secundario">{{ w.interfaz }} · {{ w.ip or 'sin IP' }}{% if w.tethering %} · tethering{% endif %}</p>
+
+                <div class="tt-linea-balanceo">
+                    {% if datos.fase == 'preparacion' %}
+                    <span>En balanceo: No (preparación)</span>
+                    {% elif w.en_balanceo %}
+                    <span>En balanceo: Sí</span>
+                    <div class="tt-barra tt-barra-peso" role="progressbar" aria-label="Peso en el balanceo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ w.peso_modo or 0 }}">
+                        <span class="tt-barra-relleno tt-barra-peso-relleno" data-pct="{{ w.peso_modo or 0 }}"></span>
+                    </div>
+                    <span class="tt-linea-peso-valor">Peso {{ w.peso_modo if w.peso_modo is not none else '—' }}</span>
+                    {% else %}
+                    <span>En balanceo: No</span>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+        {% else %}
+        <p class="tt-sin-datos"><i class="bi bi-inboxes" aria-hidden="true"></i> No hay WAN configuradas o no hay datos disponibles.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Reparto del tráfico</h2>
+    {% if datos.fase == 'preparacion' %}
+    <p class="tt-sin-datos"><i class="bi bi-cone-striped" aria-hidden="true"></i> El balanceo todavía no está activo (fase de preparación).</p>
+    {% elif datos.hay_reparto %}
+    <div class="tt-reparto" role="img" aria-label="Reparto previsto del tráfico entre las líneas en balanceo">
+        {% for w in datos.wans %}
+            {% if w.pct_reparto is not none %}
+            <span class="tt-reparto-segmento tt-linea-{{ (loop.index0 % 6) + 1 }}" data-pct="{{ w.pct_reparto }}" title="{{ w.nombre or w.id }}: peso {{ w.peso_modo }}"></span>
+            {% endif %}
+        {% endfor %}
+    </div>
+    <ul class="tt-reparto-leyenda">
+        {% for w in datos.wans %}
+            {% if w.pct_reparto is not none %}
+            <li><span class="tt-leyenda-punto tt-linea-{{ (loop.index0 % 6) + 1 }}" aria-hidden="true"></span> {{ w.nombre or w.id }} · peso {{ w.peso_modo }}</li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="tt-sin-datos"><i class="bi bi-inboxes" aria-hidden="true"></i> No hay líneas en balanceo todavía.</p>
+    {% endif %}
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Servicios</h2>
+    <div class="tt-chips">
+        {% for s in datos.servicios_fmt %}
+        <span class="tt-chip tt-chip-{{ s.color }}">
+            <i class="bi {{ 'bi-check-circle' if s.activo else 'bi-x-circle' }}" aria-hidden="true"></i>
+            {{ s.etiqueta }}: {{ s.texto }}
+        </span>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="tt-seccion" id="tt-estadisticas" data-estadisticas-url="{{ url_for('dashboard.estadisticas_json') }}">
+    <div class="tt-seccion-cabecera">
+        <h2 class="tt-subtitulo">Estadísticas</h2>
+        <fieldset class="tt-segmentado" id="tt-estad-rango" aria-label="Rango de tiempo de las estadísticas">
+            <legend class="visually-hidden">Rango de tiempo</legend>
+            <input type="radio" class="tt-segmentado-input" name="tt-estad-rango" id="tt-estad-rango-1h" value="1h">
+            <label class="tt-segmentado-opcion" for="tt-estad-rango-1h">1 h</label>
+            <input type="radio" class="tt-segmentado-input" name="tt-estad-rango" id="tt-estad-rango-24h" value="24h" checked>
+            <label class="tt-segmentado-opcion" for="tt-estad-rango-24h">24 h</label>
+            <input type="radio" class="tt-segmentado-input" name="tt-estad-rango" id="tt-estad-rango-7d" value="7d">
+            <label class="tt-segmentado-opcion" for="tt-estad-rango-7d">7 d</label>
+            <input type="radio" class="tt-segmentado-input" name="tt-estad-rango" id="tt-estad-rango-30d" value="30d">
+            <label class="tt-segmentado-opcion" for="tt-estad-rango-30d">30 d</label>
+        </fieldset>
+    </div>
+
+    <p class="tt-estad-cabecera-meta">
+        <span class="tt-estad-actualizado d-none" id="tt-estad-actualizado">
+            <i class="bi bi-arrow-repeat" aria-hidden="true"></i> <span id="tt-estad-actualizado-texto"></span>
+        </span>
+    </p>
+
+    <p class="tt-estad-sin-conexion d-none" id="tt-estad-sin-conexion" aria-live="polite">
+        <i class="bi bi-wifi-off" aria-hidden="true"></i> Sin conexión: se muestran los últimos datos cargados.
+    </p>
+
+    <p class="tt-estad-nota d-none" id="tt-estad-dns-nota">
+        <i class="bi bi-info-circle" aria-hidden="true"></i> <span id="tt-estad-dns-nota-texto"></span>
+    </p>
+
+    <div id="tt-estad-aviso-vacio" class="tt-sin-datos d-none">
+        <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
+        <span id="tt-estad-aviso-vacio-texto">Aún no hay datos de estadísticas.</span>
+    </div>
+
+    <div id="tt-estad-cuerpo">
+        <div class="tt-tarjetas-resumen" id="tt-estad-kpis" aria-label="Resumen de tráfico y DNS del rango elegido">
+            <div class="tt-kpi">
+                <div class="tt-kpi-cabecera">
+                    <div class="tt-kpi-icono"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i></div>
+                    <div class="tt-kpi-texto">
+                        <span class="tt-kpi-valor" id="tt-estad-kpi-bajada">—</span>
+                        <span class="tt-kpi-etiqueta">Bajada total</span>
+                    </div>
+                </div>
+            </div>
+            <div class="tt-kpi">
+                <div class="tt-kpi-cabecera">
+                    <div class="tt-kpi-icono"><i class="bi bi-arrow-up-circle" aria-hidden="true"></i></div>
+                    <div class="tt-kpi-texto">
+                        <span class="tt-kpi-valor" id="tt-estad-kpi-subida">—</span>
+                        <span class="tt-kpi-etiqueta">Subida total</span>
+                    </div>
+                </div>
+            </div>
+            <div class="tt-kpi">
+                <div class="tt-kpi-cabecera">
+                    <div class="tt-kpi-icono"><i class="bi bi-search" aria-hidden="true"></i></div>
+                    <div class="tt-kpi-texto">
+                        <span class="tt-kpi-valor" id="tt-estad-kpi-consultas">—</span>
+                        <span class="tt-kpi-etiqueta">Consultas DNS</span>
+                    </div>
+                </div>
+            </div>
+            <div class="tt-kpi">
+                <div class="tt-kpi-cabecera">
+                    <div class="tt-kpi-icono"><i class="bi bi-shield-check" aria-hidden="true"></i></div>
+                    <div class="tt-kpi-texto">
+                        <span class="tt-kpi-valor" id="tt-estad-kpi-bloqueado">—</span>
+                        <span class="tt-kpi-etiqueta">Consultas bloqueadas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tt-estad-grid">
+            <article class="card tt-tarjeta tt-estad-tarjeta">
+                <div class="card-body">
+                    <div class="tt-estad-tarjeta-cabecera">
+                        <h3 class="tt-card-titulo"><i class="bi bi-graph-up" aria-hidden="true"></i> Tráfico por línea</h3>
+                        <fieldset class="tt-segmentado tt-segmentado-mini" id="tt-estad-trafico-modo">
+                            <legend class="visually-hidden">Sentido del tráfico</legend>
+                            <input type="radio" class="tt-segmentado-input" name="tt-estad-trafico-modo" id="tt-estad-trafico-bajada" value="bajada" checked>
+                            <label class="tt-segmentado-opcion" for="tt-estad-trafico-bajada">Bajada</label>
+                            <input type="radio" class="tt-segmentado-input" name="tt-estad-trafico-modo" id="tt-estad-trafico-subida" value="subida">
+                            <label class="tt-segmentado-opcion" for="tt-estad-trafico-subida">Subida</label>
+                        </fieldset>
+                    </div>
+                    <div class="tt-estad-grafico-wrap">
+                        <canvas id="tt-grafico-trafico" role="img" aria-label="Tráfico por línea en Mbit/s"></canvas>
+                    </div>
+                    <p class="tt-sin-datos tt-estad-vacio d-none" id="tt-vacio-trafico"><i class="bi bi-graph-down" aria-hidden="true"></i> Aún no hay datos de tráfico.</p>
+                    <div class="tt-estad-tabla-datos" id="tt-datos-trafico"></div>
+                </div>
+            </article>
+
+            <article class="card tt-tarjeta tt-estad-tarjeta">
+                <div class="card-body">
+                    <h3 class="tt-card-titulo"><i class="bi bi-speedometer" aria-hidden="true"></i> Latencia por línea</h3>
+                    <div class="tt-estad-grafico-wrap">
+                        <canvas id="tt-grafico-latencia" role="img" aria-label="Latencia media por línea en milisegundos"></canvas>
+                    </div>
+                    <p class="tt-sin-datos tt-estad-vacio d-none" id="tt-vacio-latencia"><i class="bi bi-graph-down" aria-hidden="true"></i> Aún no hay datos de latencia.</p>
+                    <div class="tt-estad-tabla-datos" id="tt-datos-latencia"></div>
+                </div>
+            </article>
+
+            <article class="card tt-tarjeta tt-estad-tarjeta">
+                <div class="card-body">
+                    <h3 class="tt-card-titulo"><i class="bi bi-hdd-network" aria-hidden="true"></i> Top dispositivos</h3>
+                    <div class="tt-estad-grafico-wrap tt-estad-grafico-wrap-alto" id="tt-wrap-top-dispositivos">
+                        <canvas id="tt-grafico-top-dispositivos" role="img" aria-label="Dispositivos con más tráfico"></canvas>
+                    </div>
+                    <p class="tt-sin-datos tt-estad-vacio d-none" id="tt-vacio-top-dispositivos"><i class="bi bi-graph-down" aria-hidden="true"></i> Aún no hay datos de dispositivos.</p>
+                    <div class="tt-estad-tabla-datos" id="tt-datos-top-dispositivos"></div>
+                </div>
+            </article>
+
+            <article class="card tt-tarjeta tt-estad-tarjeta">
+                <div class="card-body">
+                    <h3 class="tt-card-titulo"><i class="bi bi-shield-exclamation" aria-hidden="true"></i> Consultas DNS vs bloqueadas</h3>
+                    <div class="tt-estad-grafico-wrap">
+                        <canvas id="tt-grafico-dns-bloqueo" role="img" aria-label="Consultas DNS permitidas y bloqueadas por intervalo"></canvas>
+                    </div>
+                    <p class="tt-sin-datos tt-estad-vacio d-none" id="tt-vacio-dns-bloqueo"><i class="bi bi-graph-down" aria-hidden="true"></i> Aún no hay datos de DNS.</p>
+                    <div class="tt-estad-tabla-datos" id="tt-datos-dns-bloqueo"></div>
+                </div>
+            </article>
+
+            <article class="card tt-tarjeta tt-estad-tarjeta">
+                <div class="card-body">
+                    <h3 class="tt-card-titulo"><i class="bi bi-globe" aria-hidden="true"></i> Dominios más consultados</h3>
+                    <div class="tt-estad-grafico-wrap tt-estad-grafico-wrap-alto" id="tt-wrap-dns-top">
+                        <canvas id="tt-grafico-dns-top" role="img" aria-label="Dominios más consultados"></canvas>
+                    </div>
+                    <p class="tt-sin-datos tt-estad-vacio d-none" id="tt-vacio-dns-top"><i class="bi bi-graph-down" aria-hidden="true"></i> Aún no hay consultas registradas.</p>
+                    <div class="tt-estad-tabla-datos" id="tt-datos-dns-top"></div>
+                </div>
+            </article>
+
+            <article class="card tt-tarjeta tt-estad-tarjeta">
+                <div class="card-body">
+                    <h3 class="tt-card-titulo"><i class="bi bi-shield-slash" aria-hidden="true"></i> Dominios más bloqueados</h3>
+                    <div class="tt-estad-grafico-wrap tt-estad-grafico-wrap-alto" id="tt-wrap-dns-bloqueados">
+                        <canvas id="tt-grafico-dns-bloqueados" role="img" aria-label="Dominios más bloqueados"></canvas>
+                    </div>
+                    <p class="tt-sin-datos tt-estad-vacio d-none" id="tt-vacio-dns-bloqueados"><i class="bi bi-graph-down" aria-hidden="true"></i> Aún no hay bloqueos registrados.</p>
+                    <div class="tt-estad-tabla-datos" id="tt-datos-dns-bloqueados"></div>
+                </div>
+            </article>
+
+            <article class="card tt-tarjeta tt-estad-tarjeta tt-estad-tarjeta-ancha">
+                <div class="card-body">
+                    <h3 class="tt-card-titulo"><i class="bi bi-activity" aria-hidden="true"></i> Conexiones y dispositivos activos</h3>
+                    <p class="tt-estad-nota-tarjeta d-none" id="tt-nota-conexiones">
+                        <i class="bi bi-info-circle" aria-hidden="true"></i> Conexiones activas: sólo se registran en las últimas 48 h; en este rango sólo se muestran los dispositivos activos.
+                    </p>
+                    <div class="tt-estad-grafico-wrap">
+                        <canvas id="tt-grafico-actividad" role="img" aria-label="Conexiones activas y dispositivos activos por intervalo"></canvas>
+                    </div>
+                    <p class="tt-sin-datos tt-estad-vacio d-none" id="tt-vacio-actividad"><i class="bi bi-graph-down" aria-hidden="true"></i> Aún no hay datos de actividad.</p>
+                    <div class="tt-estad-tabla-datos" id="tt-datos-actividad"></div>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/estadisticas.js') }}"></script>
+{% endblock %}

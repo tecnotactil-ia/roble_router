@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% block titulo %}Protección{% endblock %}
+{% block titulo_pagina %}Protección{% endblock %}
+{% block contenido %}
+
+{% set es_admin = session.get('rol') == 'admin' %}
+
+<div class="alert tt-alerta-info">
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
+    <span>Bloquea anuncios, rastreadores y amenazas por DNS para toda la red, usando listas públicas
+    (HaGeZi) descargadas por el propio router. No hace falta instalar nada en los dispositivos.</span>
+</div>
+
+{% if dns_emergencia.activo %}
+{# Aviso INFORMATIVO, no un fallo que pida acción (docs/CONTRATO.md): se
+   resuelve solo en cuanto dnsmasq lleve un rato estable -de ahí el tono
+   tt-alerta-warning, no tt-alerta-error-. Texto amable FIJO; el motivo
+   técnico que publica el núcleo queda sólo dentro de un <details>, para no
+   asustar a quien no lo necesita leer. #}
+<div class="alert tt-alerta-warning" role="status">
+    <i class="bi bi-exclamation-octagon" aria-hidden="true"></i>
+    <div>
+        <span><strong>Modo de emergencia DNS activo{% if dns_emergencia_desde_relativo %} desde {{ dns_emergencia_desde_relativo }}{% endif %}:</strong>
+        el router ha pausado el bloqueo y la redirección de DNS un momento para no quedarse sin
+        resolución de nombres. Se resuelve solo; no hace falta que hagas nada.</span>
+        {% if dns_emergencia.motivo %}
+        <details>
+            <summary>Detalles técnicos</summary>
+            <p class="mb-0">{{ dns_emergencia.motivo }}</p>
+        </details>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if not cfg_disponible %}
+<div class="alert tt-alerta-warning" role="alert">
+    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+    <span>El router todavía no ha enviado su configuración de bloqueo; recarga en unos segundos. Los
+    controles de esta página que dependen de ella están desactivados hasta que esté disponible; el
+    resto (actualizar listas, comprobar un dominio) sigue funcionando con normalidad.</span>
+</div>
+{% endif %}
+
+{% if avisos_recorte %}
+<div class="alert tt-alerta-warning" role="alert">
+    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+    <div>
+        {% for aviso in avisos_recorte %}
+        <p class="mb-0">{{ aviso }}</p>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if not bloqueo_estado.disponible %}
+<div class="alert tt-alerta-warning" role="alert">
+    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+    <span>{{ bloqueo_estado.error or 'No hay datos de bloqueo todavía.' }}</span>
+</div>
+{% elif not bloqueo_estado.activo and not guarda_variacion_activa %}
+<div class="alert tt-alerta-error" role="alert">
+    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+    <span>{{ bloqueo_estado.error_actualizacion or 'La última actualización no se pudo activar.' }}</span>
+</div>
+{% endif %}
+
+{% if guarda_variacion_activa %}
+<div class="alert tt-alerta-warning" role="alert">
+    <i class="bi bi-shield-exclamation" aria-hidden="true"></i>
+    <span>El total de dominios bloqueados cambió demasiado respecto a la última vez, así que el router
+    mantuvo la configuración anterior por seguridad (podría ser una lista rota).
+    Los recuentos que ves son de la pasada nueva, que NO se ha aplicado; sigue activa la anterior.</span>
+    {% if es_admin %}
+    <form method="post" action="{{ url_for('proteccion.actualizar') }}" class="tt-form-inline">
+        {{ form_actualizar.hidden_tag() }}
+        <input type="hidden" name="forzar" value="1">
+        <button class="btn btn-sm tt-btn-peligro" type="submit">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Forzar actualización
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Estado del bloqueo</h2>
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <form method="post" action="{{ url_for('proteccion.config') }}" class="tt-modo-form">
+                {{ form_estado.hidden_tag() }}
+                <h3 class="tt-wan-seccion-titulo">Bloqueo DNS</h3>
+                <div class="tt-wifi-radio-control">
+                    <fieldset class="tt-segmentado"{{ '' if (es_admin and cfg_disponible) else ' disabled' }}>
+                        <legend class="visually-hidden">Bloqueo DNS</legend>
+                        {% for valor, etiqueta in form_estado.habilitado.choices %}
+                        <input type="radio" class="tt-segmentado-input" name="habilitado" id="tt-proteccion-habilitado-{{ valor }}" value="{{ valor }}"{{ ' checked' if form_estado.habilitado.data == valor else '' }}>
+                        <label class="tt-segmentado-opcion" for="tt-proteccion-habilitado-{{ valor }}">{{ etiqueta }}</label>
+                        {% endfor %}
+                    </fieldset>
+                    {% if es_admin and cfg_disponible %}
+                    <button class="btn tt-btn-primario" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar</button>
+                    {% endif %}
+                </div>
+                {% if es_admin and not cfg_disponible %}
+                <p class="tt-nota-pesos"><i class="bi bi-info-circle" aria-hidden="true"></i> No se puede
+                guardar todavía: el router no publica la configuración actual del bloqueo.</p>
+                {% endif %}
+            </form>
+
+            <hr class="tt-divisor-modo">
+
+            <section class="tt-tarjetas-resumen" aria-label="Resumen del bloqueo DNS">
+                <div class="tt-kpi">
+                    <div class="tt-kpi-cabecera">
+                        <div class="tt-kpi-icono"><i class="bi bi-shield-check" aria-hidden="true"></i></div>
+                        <div class="tt-kpi-texto">
+                            <span class="tt-kpi-valor">{{ bloqueo_estado.total_dominios|miles }}</span>
+                            <span class="tt-kpi-etiqueta">Dominios bloqueados{% if bloqueo_estado.recortado %} (recortado al máximo){% elif not bloqueo_estado.activo %} (nueva pasada, no aplicada){% endif %}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="tt-kpi">
+                    <div class="tt-kpi-cabecera">
+                        <div class="tt-kpi-icono"><i class="bi bi-clock-history" aria-hidden="true"></i></div>
+                        <div class="tt-kpi-texto">
+                            <span class="tt-kpi-valor">{{ generado_relativo }}</span>
+                            <span class="tt-kpi-etiqueta">Última actualización</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="tt-kpi">
+                    <div class="tt-kpi-cabecera">
+                        <div class="tt-kpi-icono"><i class="bi bi-calendar-check" aria-hidden="true"></i></div>
+                        <div class="tt-kpi-texto">
+                            <span class="tt-kpi-valor">{{ siguiente_relativo }}</span>
+                            <span class="tt-kpi-etiqueta">Próxima actualización</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {% if es_admin %}
+            <form method="post" action="{{ url_for('proteccion.actualizar') }}" class="tt-form-inline">
+                {{ form_actualizar.hidden_tag() }}
+                <button class="btn tt-btn-outline-primario" type="submit">
+                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Actualizar listas ahora
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Listas</h2>
+    <p class="tt-modo-explicacion">Cada lista añade dominios a bloquear. «Pro» y «Threat Intelligence
+    Feeds» son las recomendadas por defecto.</p>
+    <form method="post" action="{{ url_for('proteccion.config') }}">
+        {{ form_listas.hidden_tag() }}
+        <ul class="tt-proteccion-catalogo" role="list">
+            {% for fila in filas_catalogo %}
+            <li class="tt-proteccion-fila">
+                <input class="form-check-input tt-proteccion-check" type="checkbox" name="listas" value="{{ fila.id }}" id="tt-proteccion-lista-{{ fila.id }}" aria-describedby="tt-proteccion-lista-{{ fila.id }}-desc"{{ ' checked' if fila.activa else '' }}{{ '' if (es_admin and cfg_disponible) else ' disabled' }}>
+                <div class="tt-proteccion-id">
+                    <label class="tt-proteccion-nombre" for="tt-proteccion-lista-{{ fila.id }}">
+                        {{ fila.nombre }}
+                        {% if fila.recomendada %}<span class="badge tt-badge-ok">Recomendada</span>{% endif %}
+                    </label>
+                    <span class="tt-proteccion-descripcion" id="tt-proteccion-lista-{{ fila.id }}-desc">{{ fila.descripcion }}</span>
+                    <div class="tt-proteccion-meta">
+                        <span><i class="bi bi-hash" aria-hidden="true"></i> {{ fila.dominios|miles if fila.dominios is not none else '—' }} dominios</span>
+                        <span><i class="bi bi-clock-history" aria-hidden="true"></i> {{ fila.actualizada_relativo }}</span>
+                        {% if fila.error %}
+                        <span class="badge tt-badge-advertencia"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ fila.error }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% if es_admin and cfg_disponible %}
+        <button class="btn tt-btn-primario mt-3" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar listas</button>
+        {% elif es_admin %}
+        <p class="tt-nota-pesos"><i class="bi bi-info-circle" aria-hidden="true"></i> No se puede guardar
+        todavía: el router no publica qué listas están activas ahora mismo.</p>
+        {% endif %}
+    </form>
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Opciones</h2>
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <h3 class="tt-wan-seccion-titulo">Bloqueo DNS</h3>
+            <form method="post" action="{{ url_for('proteccion.config') }}">
+                {{ form_opciones.hidden_tag() }}
+                <div class="tt-campos">
+                    <div class="tt-campo tt-campo-ancho">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="forzar_dns" id="tt-proteccion-forzar-dns" value="1" aria-describedby="tt-proteccion-forzar-dns-desc"{{ ' checked' if cfg_bloqueo.forzar_dns else '' }}{{ '' if (es_admin and cfg_disponible) else ' disabled' }}>
+                            <label class="form-check-label" for="tt-proteccion-forzar-dns">Obligar a usar el DNS del router</label>
+                        </div>
+                        <p class="tt-nota-pesos" id="tt-proteccion-forzar-dns-desc"><i class="bi bi-info-circle" aria-hidden="true"></i>
+                        Redirige las peticiones DNS de toda la LAN al router, aunque un dispositivo intente
+                        usar otro servidor a mano: así el bloqueo no se puede evitar cambiando el DNS.</p>
+                    </div>
+                    <div class="tt-campo tt-campo-ancho">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="bloquear_doh" id="tt-proteccion-bloquear-doh" value="1" aria-describedby="tt-proteccion-bloquear-doh-desc"{{ ' checked' if cfg_bloqueo.bloquear_doh else '' }}{{ '' if (es_admin and cfg_disponible) else ' disabled' }}>
+                            <label class="form-check-label" for="tt-proteccion-bloquear-doh">Bloquear DNS cifrado (DoH/DoT)</label>
+                        </div>
+                        <p class="tt-nota-pesos" id="tt-proteccion-bloquear-doh-desc"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                        Evita que un dispositivo se salte el bloqueo usando DNS cifrado. Aviso: los teléfonos
+                        Android con «DNS privado» en modo estricto se quedarán sin Internet hasta que lo
+                        pongas en «Automático».</p>
+                    </div>
+                    <div class="tt-campo">
+                        <label class="form-label" for="tt-proteccion-actualizar-h">Frecuencia de actualización (6-168 h)</label>
+                        {{ form_opciones.actualizar_h(class_="form-control", id="tt-proteccion-actualizar-h", readonly=(not (es_admin and cfg_disponible))) }}
+                    </div>
+                    <div class="tt-campo">
+                        <label class="form-label" for="tt-proteccion-registro-dias">Días de registro de consultas DNS (1-365)</label>
+                        {{ form_opciones.registro_dns_dias(class_="form-control", id="tt-proteccion-registro-dias", readonly=(not (es_admin and cfg_disponible))) }}
+                    </div>
+                </div>
+                {% if es_admin and cfg_disponible %}
+                <button class="btn tt-btn-primario" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar opciones</button>
+                {% elif es_admin %}
+                <p class="tt-nota-pesos"><i class="bi bi-info-circle" aria-hidden="true"></i> No se puede
+                guardar todavía: el router no publica las opciones actuales.</p>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">¿Está bloqueado?</h2>
+    <div class="card tt-tarjeta-form">
+        <div class="card-body">
+            <form method="post" action="{{ url_for('proteccion.probar') }}" class="tt-form-inline">
+                {{ form_probar.hidden_tag() }}
+                <label class="visually-hidden" for="tt-proteccion-probar-dominio">Dominio a comprobar</label>
+                <input class="form-control" type="text" id="tt-proteccion-probar-dominio" name="dominio" maxlength="253" placeholder="ejemplo.com" value="{{ form_probar.dominio.data or '' }}" required>
+                <button class="btn tt-btn-primario" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Comprobar</button>
+            </form>
+
+            {% if resultado_prueba %}
+            {% set icono_resultado = {'bloqueado': 'bi-shield-x', 'permitido': 'bi-shield-check'}.get(resultado_prueba.categoria, 'bi-hourglass-split') %}
+            <div class="tt-proteccion-resultado tt-proteccion-resultado-{{ resultado_prueba.categoria }}" id="tt-proteccion-resultado" role="status" tabindex="-1">
+                <i class="bi {{ icono_resultado }}" aria-hidden="true"></i>
+                <div class="tt-proteccion-resultado-texto">
+                    <span class="tt-proteccion-resultado-dominio">{{ resultado_prueba.dominio }}</span>
+                    <span>{{ resultado_prueba.mensaje }}</span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Lista blanca</h2>
+    <p class="tt-modo-explicacion">Dominios que se permiten siempre, aunque aparezcan en alguna lista
+    activa.</p>
+    {% if not cfg_disponible %}
+    <p class="tt-sin-datos"><i class="bi bi-hourglass-split" aria-hidden="true"></i> No disponible: el
+    router aún no publica la lista blanca.</p>
+    {% else %}
+    <div class="tt-wifi-cabecera-meta mb-2">
+        <span class="tt-contador"><strong>{{ cfg_bloqueo.lista_blanca|length }}</strong> {{ 'dominio' if cfg_bloqueo.lista_blanca|length == 1 else 'dominios' }}</span>
+    </div>
+    {% if cfg_bloqueo.lista_blanca %}
+    <ul class="tt-wifi-lista" role="list">
+        {% for dominio in cfg_bloqueo.lista_blanca|sort %}
+        <li class="tt-wifi-fila">
+            <span class="tt-wifi-icono" aria-hidden="true"><i class="bi bi-check-circle"></i></span>
+            <div class="tt-wifi-id">
+                <strong class="tt-wifi-nombre tt-mono" title="{{ dominio }}">{{ dominio }}</strong>
+            </div>
+            {% if es_admin %}
+            <div class="tt-wifi-acciones">
+                <details class="tt-wifi-eliminar">
+                    <summary class="btn btn-sm tt-btn-peligro" aria-label="Quitar «{{ dominio }}» de la lista blanca"><i class="bi bi-trash" aria-hidden="true"></i></summary>
+                    <form method="post" action="{{ url_for('proteccion.lista') }}" class="tt-wifi-eliminar-confirmar">
+                        {{ form_lista.hidden_tag() }}
+                        <input type="hidden" name="tipo" value="blanca">
+                        <input type="hidden" name="accion" value="quitar">
+                        <input type="hidden" name="dominio" value="{{ dominio }}">
+                        <p>¿Quitar «{{ dominio }}» de la lista blanca?</p>
+                        <button class="btn btn-sm tt-btn-peligro" type="submit">
+                            <i class="bi bi-trash" aria-hidden="true"></i> Confirmar
+                        </button>
+                    </form>
+                </details>
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="tt-sin-datos"><i class="bi bi-list-check" aria-hidden="true"></i> No hay dominios en la lista blanca.</p>
+    {% endif %}
+    {% if es_admin %}
+    <form method="post" action="{{ url_for('proteccion.lista') }}" class="tt-form-inline mt-3">
+        {{ form_lista.hidden_tag() }}
+        <input type="hidden" name="tipo" value="blanca">
+        <input type="hidden" name="accion" value="agregar">
+        <label class="visually-hidden" for="tt-proteccion-blanca-dominio">Dominio a añadir a la lista blanca</label>
+        <input class="form-control" type="text" id="tt-proteccion-blanca-dominio" name="dominio" maxlength="253" placeholder="ejemplo.com" required>
+        <button class="btn tt-btn-outline-primario" type="submit"><i class="bi bi-plus-lg" aria-hidden="true"></i> Añadir a la lista blanca</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</section>
+
+<section class="tt-seccion">
+    <h2 class="tt-subtitulo">Lista negra</h2>
+    <p class="tt-modo-explicacion">Dominios que se bloquean siempre, aunque no aparezcan en ninguna
+    lista activa.</p>
+    {% if not cfg_disponible %}
+    <p class="tt-sin-datos"><i class="bi bi-hourglass-split" aria-hidden="true"></i> No disponible: el
+    router aún no publica la lista negra.</p>
+    {% else %}
+    <div class="tt-wifi-cabecera-meta mb-2">
+        <span class="tt-contador"><strong>{{ cfg_bloqueo.lista_negra|length }}</strong> {{ 'dominio' if cfg_bloqueo.lista_negra|length == 1 else 'dominios' }}</span>
+    </div>
+    {% if cfg_bloqueo.lista_negra %}
+    <ul class="tt-wifi-lista" role="list">
+        {% for dominio in cfg_bloqueo.lista_negra|sort %}
+        <li class="tt-wifi-fila">
+            <span class="tt-wifi-icono" aria-hidden="true"><i class="bi bi-slash-circle"></i></span>
+            <div class="tt-wifi-id">
+                <strong class="tt-wifi-nombre tt-mono" title="{{ dominio }}">{{ dominio }}</strong>
+            </div>
+            {% if es_admin %}
+            <div class="tt-wifi-acciones">
+                <details class="tt-wifi-eliminar">
+                    <summary class="btn btn-sm tt-btn-peligro" aria-label="Quitar «{{ dominio }}» de la lista negra"><i class="bi bi-trash" aria-hidden="true"></i></summary>
+                    <form method="post" action="{{ url_for('proteccion.lista') }}" class="tt-wifi-eliminar-confirmar">
+                        {{ form_lista.hidden_tag() }}
+                        <input type="hidden" name="tipo" value="negra">
+                        <input type="hidden" name="accion" value="quitar">
+                        <input type="hidden" name="dominio" value="{{ dominio }}">
+                        <p>¿Quitar «{{ dominio }}» de la lista negra?</p>
+                        <button class="btn btn-sm tt-btn-peligro" type="submit">
+                            <i class="bi bi-trash" aria-hidden="true"></i> Confirmar
+                        </button>
+                    </form>
+                </details>
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="tt-sin-datos"><i class="bi bi-list-check" aria-hidden="true"></i> No hay dominios en la lista negra.</p>
+    {% endif %}
+    {% if es_admin %}
+    <form method="post" action="{{ url_for('proteccion.lista') }}" class="tt-form-inline mt-3">
+        {{ form_lista.hidden_tag() }}
+        <input type="hidden" name="tipo" value="negra">
+        <input type="hidden" name="accion" value="agregar">
+        <label class="visually-hidden" for="tt-proteccion-negra-dominio">Dominio a añadir a la lista negra</label>
+        <input class="form-control" type="text" id="tt-proteccion-negra-dominio" name="dominio" maxlength="253" placeholder="ejemplo.com" required>
+        <button class="btn tt-btn-outline-primario" type="submit"><i class="bi bi-plus-lg" aria-hidden="true"></i> Añadir a la lista negra</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</section>
+
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/proteccion.js') }}"></script>
+{% endblock %}

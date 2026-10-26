@@ -1,0 +1,16 @@
+[Unit]
+Description=Router de casa: aplica el cortafuegos ANTES de que arranque la red (sin ventana sin filtrar)
+DefaultDependencies=no
+After=local-fs.target nftables.service
+Before=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+# El script (core/router_firewall_arranque.py) nunca falla el arranque: si
+# no hay fase "produccion" o todavía no existe router.nft, no hace nada.
+ExecStart=/usr/bin/python3 /usr/local/lib/router/router_firewall_arranque.py
+RemainAfterExit=no
+
+[Install]
+WantedBy=sysinit.target

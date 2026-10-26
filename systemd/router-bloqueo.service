@@ -1,0 +1,80 @@
+[Unit]
+Description=Router de casa: actualiza las listas de bloqueo DNS (anuncios/rastreadores/amenazas, HaGeZi)
+Documentation=file:///usr/local/share/doc/roble_router/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Oneshot: una sola pasada y termina (lo relanza router-bloqueo.timer cada
+# bloqueo.actualizar_h horas, o routerd a demanda con
+# `systemctl --no-block start router-bloqueo.service` — acción de buzón
+# bloqueo_actualizar, ver docs/CONTRATO.md). Nunca --una-vez: este programa
+# SIEMPRE hace una sola pasada, no tiene bucle propio.
+ExecStart=/usr/bin/python3 /usr/local/lib/router/router_bloqueo.py --config /etc/router/router.json
+# Las descargas de HaGeZi pueden tardar (listas de hasta ~50 MiB, servidor
+# lento, etc.) — generoso pero acotado, nunca debe poder quedarse colgado
+# para siempre y bloquear el timer/la próxima ejecución a demanda.
+TimeoutStartSec=300
+
+# Endurecimiento (BAJA6 — revisión Opus, ronda 2): necesita ser root para
+# poder recargar dnsmasq (systemctl kill -s HUP) y validar con
+# `dnsmasq --test`, pero no hay motivo para que vea el resto del sistema de
+# escritura, cargue módulos, toque el kernel, ni conserve capacidades que
+# no usa. Comprobado (systemd-run, ver informe): ProtectHome=yes SÓLO
+# esconde /home, /root y /run/user — nunca /run/dbus ni /run/systemd, así
+# que `systemctl kill`/`is-active` (que hablan con el BUS DE SISTEMA, no
+# con un bus de sesión de usuario) siguen funcionando con todo esto puesto.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+UMask=0027
+# AF_INET/AF_INET6 para las descargas HTTPS de HaGeZi; AF_UNIX para hablar
+# con el bus de sistema (systemctl) y con syslog/journal.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# Root no necesita "ganar" nada nuevo (NoNewPrivileges ya lo impide), pero
+# tampoco necesita conservar la mayoría de las capacidades de root: ni
+# administra red (CAP_NET_ADMIN), ni cambia dueños arbitrarios fuera de
+# sus propios directorios. CAP_DAC_OVERRIDE/CAP_FOWNER/CAP_CHOWN se dejan
+# por si el administrador instala en una ruta con permisos distintos a
+# los esperados; nunca CAP_SYS_ADMIN/CAP_NET_ADMIN/CAP_SYS_MODULE/etc.
+CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_FOWNER CAP_CHOWN
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+RuntimeDirectory=router
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+LogsDirectory=router
+LogsDirectoryMode=0755
+StateDirectory=router/bloqueo
+StateDirectoryMode=0755
+# Sólo LEE /etc/router/router.json (ProtectSystem=strict ya deja todo el
+# sistema de ficheros en sólo lectura salvo lo anterior, que es lo correcto
+# aquí: este programa nunca escribe fuera de sus propios directorios).
+
+# M4: una portátil con ~2 GB de RAM no debe poder quedarse sin memoria por
+# una combinación de listas enorme (cota dura, bastante por encima de lo
+# que ocupan incluso 1 500 000 dominios en memoria a la vez); Nice/
+# IOSchedulingClass=idle para que una pasada larga (descargas + parseo)
+# nunca le robe CPU/IO a routerd ni al panel mientras corre en segundo plano.
+MemoryMax=700M
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

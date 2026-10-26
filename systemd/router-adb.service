@@ -1,0 +1,70 @@
+[Unit]
+Description=Router de casa: vigilante ADB del tethering USB de los teléfonos Android
+Documentation=file:///usr/local/share/doc/roble_router/README.md
+After=routerd.service
+Wants=routerd.service
+
+[Service]
+# Igual que routerd (M7): Type=notify + WatchdogSec propios — este servicio
+# es un proceso APARTE a propósito, para que un adb colgado/lento nunca
+# pueda arriesgar el watchdog de routerd (nftables/rutas/DHCP).
+Type=notify
+User=root
+
+# ALTA4 (revisión Opus): NUNCA HOME=/root aquí. Este servicio tiene su
+# PROPIO directorio de credenciales ADB (StateDirectory de abajo), nunca el
+# de root.
+#   - HOME=/var/lib/router-adb: por si el `adb` instalado todavía sólo
+#     mira $HOME/.android (la convención clásica), ahí buscaría
+#     /var/lib/router-adb/.android/adbkey.
+#   - ANDROID_USER_HOME (revisión Opus, ronda 3): apunta DIRECTAMENTE a
+#     .../.android, no a su padre — adb moderno (>= 34, platform-tools)
+#     usa este valor TAL CUAL como la carpeta que contiene adbkey, a
+#     diferencia de HOME (al que SÍ le añade el propio adb el ".android").
+#     Se ponen las dos variables porque no hay certeza de cuál mira la
+#     versión de adb instalada; ambas acaban señalando al mismo sitio.
+#
+# INSTALACIÓN (antes del primer arranque de este servicio): crear
+# /var/lib/router-adb/.android/ y copiar ahí /root/.android/adbkey y
+# /root/.android/adbkey.pub (la clave YA autorizada en el teléfono) —
+#   install -d -m 0700 /var/lib/router-adb/.android
+#   cp /root/.android/adbkey /root/.android/adbkey.pub /var/lib/router-adb/.android/
+#   chown -R root:root /var/lib/router-adb
+# Si no se copia, adb generará una clave NUEVA la primera vez que arranque
+# este servicio (quedaría en /var/lib/router-adb/.android/adbkey) y el
+# teléfono volverá a pedir "¿Permitir depuración USB?".
+Environment=HOME=/var/lib/router-adb
+Environment=ANDROID_USER_HOME=/var/lib/router-adb/.android
+StateDirectory=router-adb
+StateDirectoryMode=0700
+
+# MEDIA6: igual que routerd.service (/run/router para adb.json, ya
+# compartido con routerd — systemd lo mantiene mientras CUALQUIERA de los
+# dos servicios lo declare — y /var/log/router para el oplog), en vez de
+# ReadWritePaths sueltos.
+RuntimeDirectory=router
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+LogsDirectory=router
+LogsDirectoryMode=0755
+
+ExecStart=/usr/bin/python3 /usr/local/lib/router/router_adb.py
+Restart=always
+RestartSec=3
+WatchdogSec=60
+
+NoNewPrivileges=yes
+ProtectSystem=full
+# ALTA (revisión Opus, ronda 3): ProtectHome=yes de vuelta — este servicio
+# ya NUNCA toca /root ni /home (sus credenciales viven en
+# /var/lib/router-adb, fuera de /home), así que no hay motivo para dejarlos
+# accesibles; StateDirectory (bajo /var/lib) no se ve afectado por esto.
+ProtectHome=yes
+PrivateTmp=yes
+# adb necesita hablar con el teléfono por USB (/dev/bus/usb) — a propósito
+# NO se usa PrivateDevices=yes (ocultaría /dev/bus/usb entero) ni se
+# restringe con DeviceAllow: cualquier teléfono USB nuevo debe poder
+# aparecer sin tocar este unit.
+
+[Install]
+WantedBy=multi-user.target

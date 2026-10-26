@@ -1,0 +1,13 @@
+{
+  "modo": "balanceo",
+  "lan": {"interfaz": "eth0", "red": "192.168.50.0/24", "ip": "192.168.50.1"},
+  "dhcp": {"inicio": "192.168.50.100", "fin": "192.168.50.250", "lease": "12h"},
+  "dns": ["1.1.1.1", "9.9.9.9"],
+  "dominio": "lan.home.arpa",
+  "monitor": {"destinos": ["1.1.1.1", "8.8.8.8"], "intervalo_s": 5, "fallos_caida": 3, "exitos_alta": 2},
+  "ignorar_interfaces": ["lo", "eth0", "docker0"],
+  "wan_forzadas": [],
+  "wifi_wan": {"habilitada": false, "interfaz": "", "ssid_bloqueadas": []},
+  "activacion": {"perfil_lan": "LAN-ROUTER", "perfil_wifi": "", "wifi_interfaz": ""},
+  "wans": {}, "reservas": [], "etiquetas": {}
+}

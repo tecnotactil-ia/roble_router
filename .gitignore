@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.mimocode/
+staging/
+*.db
+*.sqlite
+*.log
+.pytest_cache/
+TAREA_*.md
